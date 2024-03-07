@@ -7,24 +7,40 @@
 
 #include <optional>
 
+enum class Material {
+	METALLIC,
+	DIELECTRIC,
+	DIFFUSE,
+	MATERIALS_NUMBER
+};
+
+struct Intersection {
+	float distance;
+	glm::vec3 point;
+	glm::vec3 normal;
+	bool inside;
+};
 
 struct Primitive : public Transformable {
-	virtual std::optional<float> intersect(const Ray &ray) const = 0;
+	std::optional<Intersection> intersect(Ray ray) const;
+	virtual std::optional<Intersection> intersect_ignore_transformation(Ray ray) const = 0;
 	Color color = black;
+	Material material = Material::DIFFUSE;
+	float ior;
 };
 
 struct Ellipsoid : public Primitive {
-	std::optional<float> intersect(const Ray &ray) const override;
+	std::optional<Intersection> intersect_ignore_transformation(Ray ray) const override;
 	glm::vec3 radius;
 };
 
 struct Plane : public Primitive {
-	std::optional<float> intersect(const Ray &ray) const override;
+	std::optional<Intersection> intersect_ignore_transformation(Ray ray) const override;
 	glm::vec3 normal;
 };
 
 struct Box : public Primitive {
-	std::optional<float> intersect(const Ray &ray) const override;
+	std::optional<Intersection> intersect_ignore_transformation(Ray ray) const override;
 	glm::vec3 diagonal;
 };
 

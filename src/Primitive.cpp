@@ -1,58 +1,104 @@
 #include "Primitive.hpp"
+#include "geometry_utils.hpp"
 
 #include "glm/geometric.hpp"
-#include "glm/gtc/quaternion.hpp"
 
-glm::vec3 rotate(glm::vec3 v, glm::quat q) {
-	glm::quat res = (glm::inverse(q) * glm::quat(0, v) * q);
-	return {res.x, res.y, res.z};
+#include <algorithm>
+#include <cmath>
+
+std::optional<Intersection> Primitive::intersect(Ray ray) const {
+	auto in_local = to_local(ray, *this);
+	auto intersection = intersect_ignore_transformation(in_local);
+	if (!intersection.has_value())
+		return std::nullopt;
+	intersection->point = rotate(intersection->point, conjugate(rotation)) + position;
+	intersection->normal = rotate(intersection->normal, conjugate(rotation));
+	return intersection;
 }
 
-std::optional<float> Ellipsoid::intersect(const Ray &ray) const {
-	auto origin = rotate(ray.origin - position, rotation) / radius;
-	auto direction = rotate(ray.direction, rotation) / radius;
-	float c = glm::dot(origin, origin) - 1.f;
-	float b = 2.f * glm::dot(origin, direction);
-	float a = glm::dot(direction, direction);
-	float d = b * b - 4.f * a * c;
+bool get_square_equation_roots(float a, float b, float c, float &t1, float &t2) {
+	auto d = b * b - 4.f * a * c;
 	if (d < 0.f)
+		return false;
+	t1 = (-b - sqrtf(d)) / (2.f * a);
+	t2 = (-b + sqrtf(d)) / (2.f * a);
+	return true;
+}
+
+bool min_greater_than_zero(float t1, float t2, float &t) {
+	t = (t1 > 0.f) ? t1 : t2;
+	return t > 0.f;
+}
+
+std::optional<Intersection> Ellipsoid::intersect_ignore_transformation(Ray ray) const {
+	ray.origin /= radius;
+	ray.direction /= radius;
+	float t1, t2, t;
+	if (!get_square_equation_roots(glm::dot(ray.direction, ray.direction),
+								   2.f * glm::dot(ray.origin, ray.direction),
+								   glm::dot(ray.origin, ray.origin) - 1.f, t1, t2))
 		return std::nullopt;
-	float t1 = (-b - sqrtf(d)) / (2.f * a);
-	float t2 = (-b + sqrtf(d)) / (2.f * a);
+
 	if (t1 > t2)
 		std::swap(t1, t2);
-	if (t1 > 0.f)
-		return t1;
-	if (t2 > 0.f)
-		return t2;
-	return std::nullopt;
+	if (!min_greater_than_zero(t1, t2, t))
+		return std::nullopt;
+
+	Intersection intersection{};
+	intersection.distance = t;
+	intersection.point = walk_along(ray, t);
+	intersection.normal = glm::normalize(intersection.point / radius);
+	intersection.inside = (t1 < 0.f);
+	if (glm::dot(intersection.normal, ray.direction) > 0.f)
+		intersection.normal *= -1.f;
+	return intersection;
 }
 
-std::optional<float> Plane::intersect(const Ray &ray) const {
-	auto origin = rotate(glm::vec3(ray.origin - position), rotation);
-	auto direction = rotate(ray.direction, rotation);
-	float t = -glm::dot(origin, normal)
-			/ glm::dot(direction, normal);
+std::optional<Intersection> Plane::intersect_ignore_transformation(Ray ray) const {
+	auto t = -glm::dot(ray.origin, normal)
+			/ glm::dot(ray.direction, normal);
 	if (t < 0.f)
 		return std::nullopt;
-	return t;
+
+	Intersection intersection{};
+	intersection.distance = t;
+	intersection.point = walk_along(ray, t);
+	intersection.normal = glm::normalize(normal);
+	intersection.inside = false;
+	if (glm::dot(intersection.normal, ray.direction) > 0.f)
+		intersection.normal *= -1.f;
+	return intersection;
 }
 
-std::optional<float> Box::intersect(const Ray &ray) const {
-	auto origin = rotate(glm::vec3(ray.origin - position), rotation);
-	auto direction = rotate(ray.direction, rotation);
-	auto v1 = (diagonal - origin) / direction;
-	auto v2 = (-diagonal - origin) / direction;
+std::optional<Intersection> Box::intersect_ignore_transformation(Ray ray) const {
+	auto v1 = (diagonal - ray.origin) / ray.direction;
+	auto v2 = (-diagonal - ray.origin) / ray.direction;
 	if (v1.x > v2.x) std::swap(v1.x, v2.x);
 	if (v1.y > v2.y) std::swap(v1.y, v2.y);
 	if (v1.z > v2.z) std::swap(v1.z, v2.z);
 	auto t1 = std::max(v1.x, std::max(v1.y, v1.z));
 	auto t2 = std::min(v2.x, std::min(v2.y, v2.z));
+	float t;
+
 	if (t1 > t2)
 		return std::nullopt;
-	if (t1 > 0.f)
-		return t1;
-	if (t2 > 0.f)
-		return t2;
-	return std::nullopt;
+	if (!min_greater_than_zero(t1, t2, t))
+		return std::nullopt;
+
+	Intersection intersection{};
+	intersection.distance = t;
+	intersection.point = walk_along(ray, t);
+	auto normal = glm::abs(intersection.point / diagonal);
+	auto max_component = std::max({normal.x, normal.y, normal.z});
+	if (std::abs(normal.x - max_component) > 1e-7)
+		normal.x = 0.f;
+	if (std::abs(normal.y - max_component) > 1e-7)
+		normal.y = 0.f;
+	if (std::abs(normal.z - max_component) > 1e-7)
+		normal.z = 0.f;
+	if (glm::dot(normal, ray.direction) > 0.f)
+		normal *= -1.f;
+	intersection.normal = glm::normalize(normal);
+	intersection.inside = (t1 < 0.f);
+	return intersection;
 }

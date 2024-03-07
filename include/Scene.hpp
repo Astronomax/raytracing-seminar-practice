@@ -4,6 +4,7 @@
 #include "Camera.hpp"
 #include "Color.hpp"
 #include "Primitive.hpp"
+#include "Light.hpp"
 
 #include <vector>
 #include <memory>
@@ -11,7 +12,10 @@
 struct Scene {
 	Camera camera;
 	Color bg_color = black;
-	std::vector<std::unique_ptr<Primitive>> primitives;
+	std::vector<std::shared_ptr<Primitive>> primitives;
+	int ray_depth = 1;
+	Color ambient;
+	std::vector<std::unique_ptr<Light>> lights;
 };
 
 

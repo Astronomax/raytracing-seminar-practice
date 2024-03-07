@@ -10,7 +10,7 @@ Image::Image(int height, int width) :
 void Image::set_pixel(int i, int j, Color color) {
 	assert(0 <= i && i < m_height);
 	assert(0 <= j && j < m_width);
-	int ind = 3 * (i * m_width + j);
+	auto ind = 3 * (i * m_width + j);
 	assert(0.f <= color.x && color.x <= 1.f);
 	assert(0.f <= color.y && color.y <= 1.f);
 	assert(0.f <= color.z && color.z <= 1.f);
