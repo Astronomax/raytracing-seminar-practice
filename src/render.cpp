@@ -26,7 +26,7 @@ intersect(const Scene &scene, Ray ray,
 
 Color raytrace(const Scene &scene, Ray ray, int depth = 0) {
 	if (depth >= scene.ray_depth)
-		return glm::vec3(0.f);
+		return black;
 
 	Intersection intersection{};
 	std::shared_ptr<Primitive> obstacle;
@@ -58,7 +58,7 @@ Color raytrace(const Scene &scene, Ray ray, int depth = 0) {
 									 glm::vec3(1.f, r, r * r));
 				}
 				light_direction = glm::normalize(light_direction);
-				auto reflection = glm::dot(normal, light_direction);
+				auto reflection= glm::dot(normal, light_direction);
 				if (reflection < 0.f)
 					continue;
 				auto has_intersection = intersect(scene,
@@ -94,7 +94,7 @@ Color raytrace(const Scene &scene, Ray ray, int depth = 0) {
 				return reflected;
 			auto cosTheta2 = sqrtf(1.f - powf(sinTheta2, 2.f));
 			auto refracted_direction = eta1 / eta2 * (-1.f * l) +
-					(eta1 / eta2 * glm::dot(normal, l) - cosTheta2) * normal;
+					(eta1 / eta2 * cosTheta1 - cosTheta2) * normal;
 			auto refracted = raytrace(scene,
 				{refracted_direction, point + refracted_direction * 1e-4f}, depth + 1);
 			if (!intersection.inside)

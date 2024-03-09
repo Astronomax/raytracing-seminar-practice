@@ -31,12 +31,13 @@ bool min_greater_than_zero(float t1, float t2, float &t) {
 }
 
 std::optional<Intersection> Ellipsoid::intersect_ignore_transformation(Ray ray) const {
-	ray.origin /= radius;
-	ray.direction /= radius;
+	auto divided_ray = ray;
+	divided_ray.origin /= radius;
+	divided_ray.direction /= radius;
 	float t1, t2, t;
-	if (!get_square_equation_roots(glm::dot(ray.direction, ray.direction),
-								   2.f * glm::dot(ray.origin, ray.direction),
-								   glm::dot(ray.origin, ray.origin) - 1.f, t1, t2))
+	if (!get_square_equation_roots(glm::dot(divided_ray.direction, divided_ray.direction),
+								   2.f * glm::dot(divided_ray.origin, divided_ray.direction),
+								   glm::dot(divided_ray.origin, divided_ray.origin) - 1.f, t1, t2))
 		return std::nullopt;
 
 	if (t1 > t2)
@@ -48,7 +49,7 @@ std::optional<Intersection> Ellipsoid::intersect_ignore_transformation(Ray ray) 
 	intersection.distance = t;
 	intersection.point = walk_along(ray, t);
 	intersection.normal = glm::normalize(intersection.point / radius);
-	intersection.inside = (t1 < 0.f);
+	intersection.inside = (t1 < 0.f || t2 < 0.f);
 	if (glm::dot(intersection.normal, ray.direction) > 0.f)
 		intersection.normal *= -1.f;
 	return intersection;
