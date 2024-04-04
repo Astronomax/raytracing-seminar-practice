@@ -5,29 +5,32 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 
 std::optional<Intersection> Primitive::intersect(Ray ray) const {
 	auto in_local = to_local(ray, *this);
 	auto intersection = intersect_ignore_transformation(in_local);
 	if (!intersection.has_value())
 		return std::nullopt;
-	intersection->point = rotate(intersection->point, conjugate(rotation)) + position;
+	//intersection->point = rotate(intersection->point, conjugate(rotation)) + position;
+	intersection->point = walk_along(ray, intersection->distance);
 	intersection->normal = rotate(intersection->normal, conjugate(rotation));
 	return intersection;
 }
 
 bool get_square_equation_roots(float a, float b, float c, float &t1, float &t2) {
-	auto d = b * b - 4.f * a * c;
+	auto d = b * b - 4 * a * c;
 	if (d < 0.f)
 		return false;
-	t1 = (-b - sqrtf(d)) / (2.f * a);
-	t2 = (-b + sqrtf(d)) / (2.f * a);
+	t1 = (-b - sqrt(d)) / (2 * a);
+	t2 = (-b + sqrt(d)) / (2 * a);
 	return true;
 }
 
-bool min_greater_than_zero(float t1, float t2, float &t) {
-	t = (t1 > 0.f) ? t1 : t2;
-	return t > 0.f;
+bool min_geq_zero(float t1, float t2, float &t) {
+	assert(t1 <= t2);
+	t = (t1 >= 0.f) ? t1 : t2;
+	return t >= 0.f;
 }
 
 std::optional<Intersection> Ellipsoid::intersect_ignore_transformation(Ray ray) const {
@@ -42,15 +45,15 @@ std::optional<Intersection> Ellipsoid::intersect_ignore_transformation(Ray ray) 
 
 	if (t1 > t2)
 		std::swap(t1, t2);
-	if (!min_greater_than_zero(t1, t2, t))
+	if (!min_geq_zero(t1, t2, t))
 		return std::nullopt;
 
 	Intersection intersection{};
 	intersection.distance = t;
 	intersection.point = walk_along(ray, t);
-	intersection.normal = glm::normalize(intersection.point / radius);
-	intersection.inside = (t1 < 0.f || t2 < 0.f);
-	if (glm::dot(intersection.normal, ray.direction) > 0.f)
+	intersection.normal = glm::normalize(intersection.point / (radius * radius));
+	intersection.inside = (t1 < 0.f);
+	if (intersection.inside)
 		intersection.normal *= -1.f;
 	return intersection;
 }
@@ -83,23 +86,23 @@ std::optional<Intersection> Box::intersect_ignore_transformation(Ray ray) const 
 
 	if (t1 > t2)
 		return std::nullopt;
-	if (!min_greater_than_zero(t1, t2, t))
+	if (!min_geq_zero(t1, t2, t))
 		return std::nullopt;
 
 	Intersection intersection{};
 	intersection.distance = t;
 	intersection.point = walk_along(ray, t);
-	auto normal = glm::abs(intersection.point / diagonal);
-	auto max_component = std::max({normal.x, normal.y, normal.z});
-	if (std::abs(normal.x - max_component) > 1e-7)
+	auto normal = intersection.point / diagonal;
+	auto max_component = std::max({std::abs(normal.x), std::abs(normal.y), std::abs(normal.z)});
+	if (std::abs(std::abs(normal.x) - max_component) > 1e-5f)
 		normal.x = 0.f;
-	if (std::abs(normal.y - max_component) > 1e-7)
+	if (std::abs(std::abs(normal.y) - max_component) > 1e-5f)
 		normal.y = 0.f;
-	if (std::abs(normal.z - max_component) > 1e-7)
+	if (std::abs(std::abs(normal.z) - max_component) > 1e-5f)
 		normal.z = 0.f;
-	if (glm::dot(normal, ray.direction) > 0.f)
+	intersection.inside = (t1 < 0.f);
+	if (intersection.inside)
 		normal *= -1.f;
 	intersection.normal = glm::normalize(normal);
-	intersection.inside = (t1 < 0.f);
 	return intersection;
 }
