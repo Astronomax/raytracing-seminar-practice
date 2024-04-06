@@ -1,46 +1,51 @@
 #include "Primitive.hpp"
 #include "geometry_utils.hpp"
+#include "utils.hpp"
 
 #include "glm/geometric.hpp"
 
 #include <algorithm>
 #include <cmath>
-#include <iostream>
 
-std::optional<Intersection> Primitive::intersect(Ray ray) const {
-	auto in_local = to_local(ray, *this);
-	auto intersection = intersect_ignore_transformation(in_local);
-	if (!intersection.has_value())
-		return std::nullopt;
-	//intersection->point = rotate(intersection->point, conjugate(rotation)) + position;
-	intersection->point = walk_along(ray, intersection->distance);
-	intersection->normal = rotate(intersection->normal, conjugate(rotation));
-	return intersection;
+Ray
+to_local(Ray ray, const Primitive &primitive)
+{
+	return {
+		rotate(ray.direction, primitive.rotation),
+		rotate(ray.origin - primitive.position, primitive.rotation),
+	};
 }
 
-bool get_square_equation_roots(float a, float b, float c, float &t1, float &t2) {
+bool
+get_square_equation_roots(float a, float b, float c, float &t1, float &t2)
+{
 	auto d = b * b - 4 * a * c;
 	if (d < 0.f)
 		return false;
-	t1 = (-b - sqrt(d)) / (2 * a);
-	t2 = (-b + sqrt(d)) / (2 * a);
+	t1 = (-b - sqrtf(d)) / (2.f * a);
+	t2 = (-b + sqrtf(d)) / (2.f * a);
 	return true;
 }
 
-bool min_geq_zero(float t1, float t2, float &t) {
+bool
+min_geq_zero(float t1, float t2, float &t)
+{
 	assert(t1 <= t2);
 	t = (t1 >= 0.f) ? t1 : t2;
 	return t >= 0.f;
 }
 
-std::optional<Intersection> Ellipsoid::intersect_ignore_transformation(Ray ray) const {
+std::optional<Intersection>
+Primitive::intersect_ignore_transformation_ellipsoid(Ray ray) const
+{
 	auto divided_ray = ray;
+	auto &radius = primitive_specific;
 	divided_ray.origin /= radius;
 	divided_ray.direction /= radius;
 	float t1, t2, t;
 	if (!get_square_equation_roots(glm::dot(divided_ray.direction, divided_ray.direction),
-								   2.f * glm::dot(divided_ray.origin, divided_ray.direction),
-								   glm::dot(divided_ray.origin, divided_ray.origin) - 1.f, t1, t2))
+				       2.f * glm::dot(divided_ray.origin, divided_ray.direction),
+				       glm::dot(divided_ray.origin, divided_ray.origin) - 1.f, t1, t2))
 		return std::nullopt;
 
 	if (t1 > t2)
@@ -58,9 +63,12 @@ std::optional<Intersection> Ellipsoid::intersect_ignore_transformation(Ray ray) 
 	return intersection;
 }
 
-std::optional<Intersection> Plane::intersect_ignore_transformation(Ray ray) const {
+std::optional<Intersection>
+Primitive::intersect_ignore_transformation_plane(Ray ray) const
+{
+	auto &normal = primitive_specific;
 	auto t = -glm::dot(ray.origin, normal)
-			/ glm::dot(ray.direction, normal);
+		 / glm::dot(ray.direction, normal);
 	if (t < 0.f)
 		return std::nullopt;
 
@@ -74,7 +82,10 @@ std::optional<Intersection> Plane::intersect_ignore_transformation(Ray ray) cons
 	return intersection;
 }
 
-std::optional<Intersection> Box::intersect_ignore_transformation(Ray ray) const {
+std::optional<Intersection>
+Primitive::intersect_ignore_transformation_box(Ray ray) const
+{
+	auto &diagonal = primitive_specific;
 	auto v1 = (diagonal - ray.origin) / ray.direction;
 	auto v2 = (-diagonal - ray.origin) / ray.direction;
 	if (v1.x > v2.x) std::swap(v1.x, v2.x);
@@ -94,15 +105,41 @@ std::optional<Intersection> Box::intersect_ignore_transformation(Ray ray) const 
 	intersection.point = walk_along(ray, t);
 	auto normal = intersection.point / diagonal;
 	auto max_component = std::max({std::abs(normal.x), std::abs(normal.y), std::abs(normal.z)});
-	if (std::abs(std::abs(normal.x) - max_component) > 1e-5f)
+	if (std::abs(std::abs(normal.x) - max_component) > EPS5)
 		normal.x = 0.f;
-	if (std::abs(std::abs(normal.y) - max_component) > 1e-5f)
+	if (std::abs(std::abs(normal.y) - max_component) > EPS5)
 		normal.y = 0.f;
-	if (std::abs(std::abs(normal.z) - max_component) > 1e-5f)
+	if (std::abs(std::abs(normal.z) - max_component) > EPS5)
 		normal.z = 0.f;
 	intersection.inside = (t1 < 0.f);
 	if (intersection.inside)
 		normal *= -1.f;
 	intersection.normal = glm::normalize(normal);
+	return intersection;
+}
+
+std::optional<Intersection>
+Primitive::intersect(Ray ray) const
+{
+	auto in_local = to_local(ray, *this);
+
+	std::optional<Intersection> intersection;
+	switch (type) {
+		case (PrimitiveType::ELLIPSOID):
+			intersection = intersect_ignore_transformation_ellipsoid(in_local);
+			break;
+		case (PrimitiveType::PLANE):
+			intersection = intersect_ignore_transformation_plane(in_local);
+			break;
+		case (PrimitiveType::BOX):
+			intersection = intersect_ignore_transformation_box(in_local);
+			break;
+		default:
+			unreachable();
+	}
+	if (!intersection.has_value())
+		return std::nullopt;
+	intersection->point = walk_along(ray, intersection->distance);
+	intersection->normal = rotate(intersection->normal, conjugate(rotation));
 	return intersection;
 }

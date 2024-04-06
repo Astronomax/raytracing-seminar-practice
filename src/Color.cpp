@@ -2,7 +2,9 @@
 
 #include <cmath>
 
-Color gamma_corrected(const Color &x) {
+Color
+gamma_corrected(const Color &x)
+{
 	auto gamma = 1.f / 2.2f;
 	return {
 		pow(x.x, gamma),
@@ -11,14 +13,18 @@ Color gamma_corrected(const Color &x) {
 	};
 }
 
-static Color saturate(const Color &color) {
+static Color
+saturate(const Color &color)
+{
 	auto x = std::min(1.f, std::max(0.f, color.x));
 	auto y = std::min(1.f, std::max(0.f, color.y));
 	auto z = std::min(1.f, std::max(0.f, color.z));
 	return {x, y, z};
 }
 
-Color aces_tonemap(const Color &x) {
+Color
+aces_tonemap(const Color &x)
+{
 	const auto a = 2.51f;
 	const auto b = 0.03f;
 	const auto c = 2.43f;

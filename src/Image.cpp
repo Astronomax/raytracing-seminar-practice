@@ -7,7 +7,9 @@ Image::Image(int height, int width) :
 	m_width(width),
 	raw(height * width * 3) {}
 
-void Image::set_pixel(int i, int j, Color color) {
+void
+Image::set_pixel(int i, int j, Color color)
+{
 	assert(0 <= i && i < m_height);
 	assert(0 <= j && j < m_width);
 	auto ind = 3 * (i * m_width + j);
@@ -19,7 +21,9 @@ void Image::set_pixel(int i, int j, Color color) {
 	raw[ind + 2] = (uint8_t)round(255.0 * color.z);
 }
 
-void Image::save(std::ofstream &out) {
+void
+Image::save(std::ofstream &out)
+{
 	out << "P6\n";
 	out << m_width << ' ' << m_height << '\n';
 	out << 255 << '\n';

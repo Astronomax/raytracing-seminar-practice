@@ -3,9 +3,17 @@
 
 #include "Color.hpp"
 #include "Ray.hpp"
-#include "Transformable.hpp"
+
+#include <glm/gtc/quaternion.hpp>
 
 #include <optional>
+
+enum class PrimitiveType {
+    ELLIPSOID,
+    PLANE,
+    BOX,
+    PRIMITIVES_NUMBER
+};
 
 enum class Material {
 	METALLIC,
@@ -21,27 +29,19 @@ struct Intersection {
 	bool inside;
 };
 
-struct Primitive : public Transformable {
+struct Primitive {
 	std::optional<Intersection> intersect(Ray ray) const;
-	virtual std::optional<Intersection> intersect_ignore_transformation(Ray ray) const = 0;
+	std::optional<Intersection> intersect_ignore_transformation_ellipsoid(Ray ray) const;
+	std::optional<Intersection> intersect_ignore_transformation_plane(Ray ray) const;
+	std::optional<Intersection> intersect_ignore_transformation_box(Ray ray) const;
 	Color color = black;
 	Material material = Material::DIFFUSE;
 	float ior;
-};
-
-struct Ellipsoid : public Primitive {
-	std::optional<Intersection> intersect_ignore_transformation(Ray ray) const override;
-	glm::vec3 radius;
-};
-
-struct Plane : public Primitive {
-	std::optional<Intersection> intersect_ignore_transformation(Ray ray) const override;
-	glm::vec3 normal;
-};
-
-struct Box : public Primitive {
-	std::optional<Intersection> intersect_ignore_transformation(Ray ray) const override;
-	glm::vec3 diagonal;
+	Color emission;
+    	PrimitiveType type;
+	glm::vec3 primitive_specific;
+	glm::vec3 position = {0, 0, 0};
+	glm::quat rotation = {1, 0, 0, 0};
 };
 
 #endif //RAYTRACING_SEMINAR_PRACTICE_PRIMITIVE_HPP

@@ -6,7 +6,7 @@
 #include <glm/vec3.hpp>
 
 struct Camera {
-	Ray ray_throw_pixel(int i, int j) const;
+	Ray ray_throw(float x, float y) const;
 
 	int width, height;
 	glm::vec3 position;
