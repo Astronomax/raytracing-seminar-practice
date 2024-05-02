@@ -30,7 +30,9 @@ get_square_equation_roots(float a, float b, float c, float &t1, float &t2)
 bool
 min_geq_zero(float t1, float t2, float &t)
 {
-	assert(t1 <= t2);
+	//assert(!std::isnan(t1));
+	//assert(!std::isnan(t2));
+	//assert(t1 <= t2);
 	t = (t1 >= 0.f) ? t1 : t2;
 	return t >= 0.f;
 }

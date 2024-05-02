@@ -34,15 +34,23 @@ Color
 diffuse_raytrace(const Scene &scene, Random &rnd, const std::shared_ptr<Primitive>& primitive,
 		 glm::vec3 point, glm::vec3 normal, Ray ray, int depth)
 {
-	glm::vec3 w = {rnd.normal(), rnd.normal(), rnd.normal()};
-	w = glm::normalize(w);
+	glm::vec3 w = scene.distrib->sample(point + EPS5 * normal, normal);
+	//static int cnt = 0;
+	//int tmp = cnt;
+	//if(cnt++ < 10)
+	//	std::cout << "w: " << w.x << " " << w.y << " " << w.z << "\n";
+	assert(std::abs(glm::length(w) - 1.f) < EPS5);
 	auto w_normal_dot = glm::dot(w, normal);
-	if (glm::dot(w, normal) < 0.f) {
-		w *= -1.f;
-		w_normal_dot *= -1.f;
+	if (w_normal_dot < 0.f) {
+		return primitive->emission;
 	}
+	float p = scene.distrib->pdf(point + EPS5 * normal, normal, w);
 	Ray wRay = {w, point + w * EPS5};
-	return primitive->emission + 2.f * w_normal_dot * raytrace(scene, rnd, wRay, depth + 1) * primitive->color;
+	//if(tmp < 10) std::cout << "pdf: " << p << "\n";
+	//if(tmp < 10) std::cout << "1.f / (PI * p)...: " << 1.f / (PI * p) * w_normal_dot << std::endl;
+	auto res = primitive->emission + 1.f / (PI * p) * w_normal_dot * raytrace(scene, rnd, wRay, depth + 1) * primitive->color;;
+	//if(tmp < 10) std::cout << "res: " << res.x << " " << res.y << " " << res.z << std::endl;
+	return res;
 }
 
 Color
@@ -100,6 +108,11 @@ raytrace(const Scene &scene, Random &rnd, Ray ray, int depth)
 		point = intersection.point;
 		normal = intersection.normal;
 		inside = intersection.inside;
+		//static int cnt = 0;
+		//while(cnt++ < 10) {
+		//	std::cout << "point: " << point.x << " " << point.y << " " << point.z << "\n";
+		//	std::cout << "normal: " << normal.x << " " << normal.y << " " << normal.z << "\n";
+		//}
 	}
 
 	assert(std::abs(glm::length(normal) - 1.f) < EPS5);
@@ -118,11 +131,10 @@ raytrace(const Scene &scene, Random &rnd, Ray ray, int depth)
 }
 
 Image
-render(const Scene &scene)
+render(Random &rnd, Scene &scene)
 {
 	const auto &camera = scene.camera;
 	Image image(camera.height, camera.width);
-	Random rnd;
 	for (int i = 0; i < camera.height; i++) {
 		for (int j = 0; j < camera.width; j++) {
 			Color color = black;

@@ -4,6 +4,6 @@
 #include "Image.hpp"
 #include "Scene.hpp"
 
-Image render(const Scene &scene);
+Image render(Random &rnd, Scene &scene);
 
 #endif //RAYTRACING_SEMINAR_PRACTICE_RENDER_HPP

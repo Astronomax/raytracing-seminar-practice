@@ -15,10 +15,11 @@ add_executable(${TARGET_NAME}
         src/Primitive.cpp
         src/render.cpp
         src/Ray.cpp
+        src/Scene.cpp
         src/geometry_utils.cpp
         src/Color.cpp
         include/utils.hpp
-        include/Random.hpp
+        src/Random.cpp
 )
 
 add_subdirectory(glm)
