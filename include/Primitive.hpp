@@ -41,7 +41,6 @@ struct Primitive : public std::enable_shared_from_this<Primitive> {
 	std::optional<Intersection> intersect_ignore_transformation_plane(Ray ray) const;
 	std::optional<Intersection> intersect_ignore_transformation_box(Ray ray) const;
 	std::optional<Intersection> intersect_ignore_transformation_triangle(Ray ray) const;
-	PrimitivePtr getptr();
 
 	Color color = black;
 	Material material = Material::DIFFUSE;

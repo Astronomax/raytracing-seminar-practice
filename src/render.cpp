@@ -129,8 +129,7 @@ render(std::shared_ptr<Random> rnd, Scene &scene)
 {
 	const auto &camera = scene.camera;
 	Image image(camera.height, camera.width);
-	//for (int i = 0; i < camera.height; i++) {
-	//	for (int j = 0; j < camera.width; j++) {
+
 	#pragma omp parallel for schedule(dynamic, 8)
 	for (int pixel = 0; pixel < camera.height * camera.width; pixel++) {
 		int i = pixel / camera.width;
@@ -145,7 +144,5 @@ render(std::shared_ptr<Random> rnd, Scene &scene)
 		color /= (float) scene.samples;
 		image.set_pixel(i, j, gamma_corrected(aces_tonemap(color)));
 	}
-	//	}
-	//}
 	return image;
 }

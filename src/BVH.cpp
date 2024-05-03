@@ -32,7 +32,6 @@ AABB build_aabb(const PrimitivePtr& primitive) {
 	switch(primitive->type) {
 		case (PrimitiveType::PLANE):
 			unreachable();
-			break;
 		case (PrimitiveType::BOX):
 		case (PrimitiveType::ELLIPSOID):
 			aabb_ignore_transformation.extend(-primitive->primitive_specific[0]);
@@ -57,10 +56,10 @@ AABB build_aabb(const PrimitivePtr& primitive) {
 	AABB aabb;
 	for (unsigned char mask = 0; mask < 8; mask++) {
 		glm::vec3 p;
-		for (int i = 0; i < 3; i++) {
-			p[i] = (mask & (1 << i)) ?
-			       aabb_ignore_transformation.aabb_min[i] :
-			       aabb_ignore_transformation.aabb_max[i];
+		for (int axis = 0; axis < (int)Axis::AXIS_COUNT; axis++) {
+			p[axis] = (mask & (1 << axis)) ?
+				  aabb_ignore_transformation.aabb_min[axis] :
+				  aabb_ignore_transformation.aabb_max[axis];
 		}
 		p = rotate(p, conjugate(primitive->rotation)) + primitive->position;
 		aabb.extend(p);
@@ -70,6 +69,7 @@ AABB build_aabb(const PrimitivePtr& primitive) {
 
 float aabb_surface_area(const AABB &aabb) {
 	auto s = aabb.aabb_max - aabb.aabb_min;
+	assert(s.x >= 0.f && s.y >= 0.f && s.z >= 0.f);
 	return 2.f * (s.x * s.y + s.x * s.z + s.y * s.z);
 }
 
@@ -98,7 +98,7 @@ seek_for_best_split(std::vector<PrimitivePtr> &primitives,
 			scores[j] += aabb_surface_area(aabb) * (float)(count - j);
 		}
 		for(int j = 1; j < count; j++)
-			result = std::max(result, Split{scores[j], (Axis)i, j});
+			result = std::min(result, Split{scores[j], (Axis)i, j});
 	}
 	return result;
 }

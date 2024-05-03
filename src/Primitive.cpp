@@ -178,7 +178,3 @@ Primitive::intersect(Ray ray) const
 	intersection->normal = rotate(intersection->normal, conjugate(rotation));
 	return intersection;
 }
-
-PrimitivePtr Primitive::getptr() {
-	return shared_from_this();
-}
