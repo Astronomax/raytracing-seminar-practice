@@ -1,4 +1,4 @@
-#include "Ray.hpp"
+#include <Ray.hpp>
 
 glm::vec3
 walk_along(Ray ray, float distance)

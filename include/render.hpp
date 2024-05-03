@@ -4,6 +4,6 @@
 #include "Image.hpp"
 #include "Scene.hpp"
 
-Image render(Random &rnd, Scene &scene);
+Image render(std::shared_ptr<Random> rnd, Scene &scene);
 
 #endif //RAYTRACING_SEMINAR_PRACTICE_RENDER_HPP

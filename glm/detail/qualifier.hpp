@@ -111,44 +111,44 @@ namespace detail
 	template<>
 	struct storage<4, float, true>
 	{
-		typedef glm_f32vec4 type;
+		typedef glm_f32vec4 type_;
 	};
 
 	template<>
 	struct storage<4, int, true>
 	{
-		typedef glm_i32vec4 type;
+		typedef glm_i32vec4 type_;
 	};
 
 	template<>
 	struct storage<4, unsigned int, true>
 	{
-		typedef glm_u32vec4 type;
+		typedef glm_u32vec4 type_;
 	};
 
 	template<>
 	struct storage<2, double, true>
 	{
-		typedef glm_f64vec2 type;
+		typedef glm_f64vec2 type_;
 	};
 
 	template<>
 	struct storage<2, detail::int64, true>
 	{
-		typedef glm_i64vec2 type;
+		typedef glm_i64vec2 type_;
 	};
 
 	template<>
 	struct storage<2, detail::uint64, true>
 	{
-		typedef glm_u64vec2 type;
+		typedef glm_u64vec2 type_;
 	};
 #	endif
 #	if (GLM_ARCH & GLM_ARCH_AVX_BIT)
 	template<>
 	struct storage<4, double, true>
 	{
-		typedef glm_f64vec4 type;
+		typedef glm_f64vec4 type_;
 	};
 #	endif
 
@@ -156,13 +156,13 @@ namespace detail
 	template<>
 	struct storage<4, detail::int64, true>
 	{
-		typedef glm_i64vec4 type;
+		typedef glm_i64vec4 type_;
 	};
 
 	template<>
 	struct storage<4, detail::uint64, true>
 	{
-		typedef glm_u64vec4 type;
+		typedef glm_u64vec4 type_;
 	};
 #	endif
 
@@ -170,19 +170,19 @@ namespace detail
 	template<>
 	struct storage<4, float, true>
 	{
-		typedef glm_f32vec4 type;
+		typedef glm_f32vec4 type_;
 	};
 
 	template<>
 	struct storage<4, int, true>
 	{
-		typedef glm_i32vec4 type;
+		typedef glm_i32vec4 type_;
 	};
 
 	template<>
 	struct storage<4, unsigned int, true>
 	{
-		typedef glm_u32vec4 type;
+		typedef glm_u32vec4 type_;
 	};
 #	endif
 

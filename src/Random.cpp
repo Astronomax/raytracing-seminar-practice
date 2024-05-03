@@ -1,234 +1,291 @@
 #include <Random.hpp>
+#include <utility>
 
-Random::Random() : rnd(240), uniform_(0.f, 1.f), normal_(0.f, 1.f) {}
+Random::Random()
+	: rnd(std::chrono::steady_clock::now().time_since_epoch().count()),
+	uniform_(0.f, 1.f), normal_(0.f, 1.f) {}
 
-float Random::uniform(float l, float r) {
+float
+Random::uniform(float l, float r)
+{
 	assert(l <= r);
 	return l + uniform_(rnd) * (r - l);
 }
 
-float Random::normal() {
-	return normal_(rnd);
+float
+Random::normal(float mu, float sigma)
+{
+	return mu + normal_(rnd) * sigma;
 }
 
-Distrib::Distrib(Random &rnd, DistribType type)
-	: rnd(rnd), type(type) {}
+Distribution::Distribution(std::shared_ptr<Random> rnd, DistributionType type)
+	: rnd_(std::move(rnd)), type_(type) {}
 
-void Distrib::init_box(Primitive box) {
-	primitive = box;
+void
+Distribution::init_box(PrimitivePtr box)
+{
+	primitive_ = std::move(box);
 }
 
-void Distrib::init_ellipsoid(Primitive ellipsoid) {
-	primitive = ellipsoid;
+void
+Distribution::init_ellipsoid(PrimitivePtr ellipsoid)
+{
+	primitive_ = std::move(ellipsoid);
 }
 
-void Distrib::init_mixed(std::vector<std::unique_ptr<Distrib>> &&distribs_) {
-	distribs = std::move(distribs_);
+void
+Distribution::init_mixed(std::vector<std::unique_ptr<Distribution>> &&distributions)
+{
+	distributions_ = std::move(distributions);
 }
 
-glm::vec3 Distrib::sample_cosine(glm::vec3 n_x) const {
-	//static int cnt = 0;
-	//int tmp = cnt;
-	//if(cnt++ < 10)
-	//	std::cout << "COSINE\n";
-	float x_ = rnd.normal(), y_ = rnd.normal(), z_ = rnd.normal();
-	glm::vec3 w = {x_, y_, z_};
-	//if(tmp < 10) std::cout << w.x << " " << w.y << " " << w.z << "\n";
-	w = glm::normalize(w);
-	//if(tmp < 10) std::cout << w.x << " " << w.y << " " << w.z << "\n";
-	w = w + n_x;
-	//if(tmp < 10) std::cout << w.x << " " << w.y << " " << w.z << "\n";
-	auto len = glm::length(w);
-	if (std::isnan(len) || len <= EPS5 || glm::dot(w, n_x) <= EPS5) {
-		return n_x;
+void
+Distribution::init_mixed_on_primitives(const std::vector<std::unique_ptr<Distribution>> &distributions)
+{
+	std::vector<PrimitivePtr> primitives;
+	for(auto &distribution : distributions)
+		primitives.push_back(distribution->primitive_);
+	bvh = BVH(primitives);
+	distributions_.reserve(distributions.size());
+	for (auto &primitive : bvh.primitives) {
+		switch (primitive->type) {
+			case (PrimitiveType::BOX): {
+				auto distribution = std::make_unique<Distribution>(rnd_, DistributionType::BOX);
+				distribution->init_box(primitive);
+				distributions_.push_back(std::move(distribution));
+				break;
+			}
+			case (PrimitiveType::ELLIPSOID): {
+				auto distribution = std::make_unique<Distribution>(rnd_, DistributionType::ELLIPSOID);
+				distribution->init_ellipsoid(primitive);
+				distributions_.push_back(std::move(distribution));
+				break;
+			}
+			default:
+				unreachable();
+		}
 	}
+}
+
+glm::vec3
+Distribution::sample_cosine(glm::vec3 n_x) const
+{
+	auto w = glm::normalize(glm::vec3(rnd_->normal(), rnd_->normal(), rnd_->normal()));
+	w = w + n_x;
+	auto len = glm::length(w);
+	if (std::isnan(len) || len <= EPS5 || glm::dot(w, n_x) <= EPS5)
+		return n_x;
 	return glm::normalize(w);
 }
 
-glm::vec3 Distrib::sample_box(glm::vec3 x) const {
-	//static int cnt = 0;
-	//if(cnt++ < 10)
-	//	std::cout << "BOX\n";
-	auto &s = primitive.primitive_specific;
+glm::vec3
+Distribution::sample_box(glm::vec3 x) const
+{
+	auto &s = primitive_->primitive_specific[0];
 	glm::vec3 weight = {s.y * s.z, s.x * s.z, s.x * s.y};
 	while (true) {
-		float u = rnd.uniform(0.f, weight.x + weight.y + weight.z);
-		float sign = (rnd.uniform() > 0.5f) ? 1.f : -1.f;
+		float u = rnd_->uniform(0.f, weight.x + weight.y + weight.z);
+		float sign = (rnd_->uniform() > 0.5f) ? 1.f : -1.f;
 		glm::vec3 y;
-		if (u < weight.x) {
-			y = glm::vec3(sign * s.x, rnd.uniform(-s.y, s.y), rnd.uniform(-s.z, s.z));
-		} else if (u < weight.x + weight.y) {
-			y = glm::vec3(rnd.uniform(-s.x, s.x), sign * s.y, rnd.uniform(-s.z, s.z));
-		} else {
-			y = glm::vec3(rnd.uniform(-s.x, s.x), rnd.uniform(-s.y, s.y), sign * s.z);
-		}
-		y = rotate(y, conjugate(primitive.rotation)) + primitive.position;
+		if (u < weight.x)
+			y = glm::vec3(sign * s.x, rnd_->uniform(-s.y, s.y), rnd_->uniform(-s.z, s.z));
+		else if (u < weight.x + weight.y)
+			y = glm::vec3(rnd_->uniform(-s.x, s.x), sign * s.y, rnd_->uniform(-s.z, s.z));
+		else
+			y = glm::vec3(rnd_->uniform(-s.x, s.x), rnd_->uniform(-s.y, s.y), sign * s.z);
+		y = rotate(y, conjugate(primitive_->rotation)) + primitive_->position;
 		auto w = glm::normalize(y - x);
-		if (primitive.intersect(Ray{w, x}).has_value()) {
+		if (primitive_->intersect(Ray{w, x}).has_value())
 			return w;
-		}
 	}
 }
 
-glm::vec3 Distrib::sample_ellipsoid(glm::vec3 x) const {
-	//static int cnt = 0;
-	//int tmp = cnt;
-	//if(cnt++ < 10)
-	//	std::cout << "ELLIPSOID\n";
-	auto r = primitive.primitive_specific;
-	//if(tmp < 10) std::cout << "=========\n";
+glm::vec3
+Distribution::sample_ellipsoid(glm::vec3 x) const
+{
+	auto r = primitive_->primitive_specific[0];
 	while (true) {
-		float x_ = rnd.normal(), y_ = rnd.normal(), z_ = rnd.normal();
-		auto y = glm::vec3(x_, y_, z_);
-
-		//if(tmp < 10) {
-		//	std::cout << y.x << " " << y.y << " " << y.z << " ";
-		//	std::cout << rnd.normal() << "\n";
-		//}
-		y = glm::normalize(y);
-		y *= r;
-		y = rotate(y, conjugate(primitive.rotation)) + primitive.position;
+		auto y = r * glm::normalize(glm::vec3(rnd_->normal(), rnd_->normal(), rnd_->normal()));
+		y = rotate(y, conjugate(primitive_->rotation)) + primitive_->position;
 		auto w = glm::normalize(y - x);
-		//if(tmp < 10) std::cout << w.x << " " << w.y << " " << w.z << "\n";
-		if (primitive.intersect(Ray{w, x}).has_value()) {
-			//if(tmp < 10) std::cout << "=========\n";
+		if (primitive_->intersect(Ray{w, x}).has_value())
 			return w;
-		}
 	}
 }
 
-glm::vec3 Distrib::sample_mixed(glm::vec3 x, glm::vec3 n_x) const {
-	//static int cnt = 0;
-	float u = rnd.uniform(0, 1.f - EPS5);
-	auto i = (int)(u * (float)distribs.size());
-	//if (cnt++ < 100)
-	//	std::cout << "MIXED " << u << " " << rnd.normal() << " " << i << "\n";
-	assert(0 <= i && i < (int)distribs.size());
-	i = std::max(0, std::min((int)distribs.size() - 1, i));
-	return distribs[i]->sample(x, n_x);
+glm::vec3
+Distribution::sample_triangle(glm::vec3 x) const
+{
+	const auto &a = primitive_->primitive_specific[0];
+	const auto &b = primitive_->primitive_specific[1] - a;
+	const auto &c = primitive_->primitive_specific[2] - a;
+	float u = rnd_->uniform(), v = rnd_->uniform();
+	if (u + v > 1.f) {
+		u = 1.f - u;
+		v = 1.f - v;
+	}
+	auto y = primitive_->position + rotate(a + u * b + v * c, conjugate(primitive_->rotation));
+	auto w = glm::normalize(y - x);
+	return w;
 }
 
-glm::vec3 Distrib::sample(glm::vec3 x, glm::vec3 n_x) const {
-	switch (type) {
-		case (DistribType::COSINE):
+glm::vec3
+Distribution::sample_mixed(glm::vec3 x, glm::vec3 n_x) const
+{
+	auto i = (int)(rnd_->uniform(0, 1.f - EPS5) * (float)distributions_.size());
+	i = std::max(0, std::min((int)distributions_.size() - 1, i));
+	return distributions_[i]->sample(x, n_x);
+}
+
+glm::vec3
+Distribution::sample_mixed_on_primitives(glm::vec3 x, glm::vec3 n_x) const
+{
+	return sample_mixed(x, n_x);
+}
+
+glm::vec3
+Distribution::sample(glm::vec3 x, glm::vec3 n_x) const
+{
+	switch (type_) {
+		case (DistributionType::COSINE):
 			return sample_cosine(n_x);
-		case (DistribType::BOX):
+		case (DistributionType::BOX):
 			return sample_box(x);
-		case (DistribType::ELLIPSOID):
+		case (DistributionType::ELLIPSOID):
 			return sample_ellipsoid(x);
-		case (DistribType::MIXED):
+		case (DistributionType::MIXED):
 			return sample_mixed(x, n_x);
+		case (DistributionType::MIXED_ON_PRIMITIVES):
+			return sample_mixed_on_primitives(x, n_x);
 		default:
 			unreachable();
 	}
 }
 
-float Distrib::pdf1_box(glm::vec3 x, glm::vec3 y, glm::vec3 n_y) const {
-	auto &s = primitive.primitive_specific;
+float
+Distribution::pdf1_box(glm::vec3 x, glm::vec3 y, glm::vec3 n_y) const
+{
+	auto &s = primitive_->primitive_specific[0];
 	auto area = 8 * (s.y * s.z + s.x * s.z + s.x * s.y);
 	auto w = y - x;
 	auto t = glm::length(x - y);
 	w = glm::normalize(w);
-	if (std::isnan(glm::length(w))) {
+	if (std::isnan(glm::length(w)))
 		return 0.f;
-	}
 	return powf(t, 2.f) / (area * std::abs(glm::dot(w, n_y)) + EPS7);
 }
 
-float Distrib::pdf1_ellipsoid(glm::vec3 x, glm::vec3 y, glm::vec3 n_y) const {
-	auto r = primitive.primitive_specific;
-	auto n = rotate(y - primitive.position, primitive.rotation) / r;
+float
+Distribution::pdf1_ellipsoid(glm::vec3 x, glm::vec3 y, glm::vec3 n_y) const
+{
+	auto r = primitive_->primitive_specific[0];
+	auto n = rotate(y - primitive_->position, primitive_->rotation) / r;
 	auto p = 1.f / (4.f * PI * glm::length(glm::vec3(n.x * r.y * r.z, r.x * n.y * r.z, r.x * r.y * n.z)));
 	auto w = y - x;
 	auto t = glm::length(w);
-	w = glm::normalize(w);
-
-	if (std::isnan(glm::length(w))) {
+	if (std::abs(t) < EPS4)
 		return 0.f;
-	}
-
-	assert(!std::isnan(p));
-	assert(!std::isnan(t));
-	auto res = p * powf(t, 2.f);
-	assert(!std::isnan(res));
-
-	assert(!std::isnan(glm::dot(w, n_y)));
-	res /= (std::abs(glm::dot(w, n_y)) + EPS5);
-	assert(!std::isnan(res));
-	return res;
+	w = glm::normalize(w);
+	return p * powf(t, 2.f) / (std::abs(glm::dot(w, n_y)) + EPS5);
 }
 
-float Distrib::pdf_cosine(glm::vec3 n_x, glm::vec3 w) const {
+float
+Distribution::pdf1_triangle(glm::vec3 x, glm::vec3 y, glm::vec3 n_y) const
+{
+	const auto &a = primitive_->primitive_specific[0];
+	const auto &b = primitive_->primitive_specific[1] - a;
+	const auto &c = primitive_->primitive_specific[2] - a;
+	const auto normal = glm::cross(b, c);
+	float p = 1.f / (0.5f * glm::length(normal));
+	auto w = y - x;
+	auto t = glm::length(w);
+	return p * powf(t, 2.f) / (std::abs(glm::dot(w, n_y)) + EPS5);
+}
+
+float
+Distribution::pdf_cosine(glm::vec3 n_x, glm::vec3 w) const
+{
 	return std::max(0.f, glm::dot(w, n_x) / PI);
 }
 
-float Distrib::pdf1_primitive(glm::vec3 x, glm::vec3 w, glm::vec3 n_y) const {
-	switch (type) {
-		case (DistribType::BOX):
+float
+Distribution::pdf1_primitive(glm::vec3 x, glm::vec3 w, glm::vec3 n_y) const
+{
+	switch (type_) {
+		case (DistributionType::BOX):
 			return pdf1_box(x, w, n_y);
-		case (DistribType::ELLIPSOID):
+		case (DistributionType::ELLIPSOID):
 			return pdf1_ellipsoid(x, w, n_y);
 		default:
 			unreachable();
 	}
 }
 
-float Distrib::pdf_mixed(glm::vec3 x, glm::vec3 n_x, glm::vec3 w) const {
+float
+Distribution::pdf_mixed(glm::vec3 x, glm::vec3 n_x, glm::vec3 w) const
+{
 	float p = 0;
-	for (const auto &distrib : distribs) {
-		auto p_ = distrib->pdf(x, n_x, w);
-		assert(!std::isnan(p_));
-		p += p_;
-	}
-	assert(!std::isnan(p));
-	assert(distribs.size() != 0);
-	return p / (float)distribs.size();
+	for (const auto &distrib : distributions_)
+		p += distrib->pdf(x, n_x, w);
+	return p / (float)distributions_.size();
 }
 
-float Distrib::pdf(glm::vec3 x, glm::vec3 n_x, glm::vec3 w) const {
-	switch (type) {
-		case (DistribType::COSINE): {
-			auto p = pdf_cosine(n_x, w);
-			assert(!std::isnan(p));
-			return p;
-		}
-		case (DistribType::BOX):
-		case (DistribType::ELLIPSOID): {
-			//static int cnt = 0;
-			//cnt++;
-			//if (cnt <= 25) std::cout << "ELLIPSOID pdf" << std::endl;
+float
+Distribution::pdf_sum_bvh(uint32_t current_id, glm::vec3 x, glm::vec3 n_x, glm::vec3 w) const
+{
+	Ray ray = {w, x};
+	const Node &current = bvh.nodes[current_id];
+	auto intersection = current.aabb.intersect(ray);
+	if (!intersection.has_value())
+		return 0.f;
+	if (current.left_child == -1 && current.right_child == -1) {
+		float pdf_sum = 0;
+		for (int i = 0; i < current.primitive_count; i++)
+			pdf_sum += distributions_[current.first_primitive_id + i]->pdf(x, n_x, w);
+		return pdf_sum;
+	}
+	return pdf_sum_bvh(current.left_child, x, n_x, w) +
+		pdf_sum_bvh(current.right_child, x, n_x, w);
+}
+
+float
+Distribution::pdf_mixed_on_primitives(glm::vec3 x, glm::vec3 n_x, glm::vec3 w) const
+{
+	return pdf_sum_bvh(bvh.root, x, n_x, w) / (float)distributions_.size();
+}
+
+float
+Distribution::pdf(glm::vec3 x, glm::vec3 n_x, glm::vec3 w) const
+{
+	switch (type_) {
+		case (DistributionType::COSINE):
+			return pdf_cosine(n_x, w);
+		case (DistributionType::BOX):
+		case (DistributionType::ELLIPSOID): {
 			auto origin = x;
 			float p = 0.f;
 			for (int i = 0; i < 2; i++) {
-				auto intersection = primitive.intersect({w, origin});
-				if (!intersection.has_value()) {
-					//if (cnt <= 25) std::cout << "no intersection" << std::endl;
-					//assert(!std::isnan(p));
-					return 0.;
-					//return p;
-				}
-				float t = intersection.value().distance;
-				if (std::isnan(t)) {
-					//if (cnt <= 25) std::cout << "no intersection" << std::endl;
-					assert(!std::isnan(p));
+				auto intersection = primitive_->intersect({w, origin});
+				if (!intersection.has_value())
 					return p;
-				}
 				auto y = intersection.value().point;
 				auto n_y = intersection.value().normal;
-				//if (cnt <= 25) std::cout << "pdf1: " << pdf1_primitive(x, y, intersection->normal) << " ";
 				p += pdf1_primitive(x, y, n_y);
 				origin = intersection->point + w * EPS4;
 			}
-			//if (cnt <= 25)
-			//	std::cout << std::endl;
-			assert(!std::isnan(p));
 			return p;
 		}
-		case (DistribType::MIXED): {
-			auto p = pdf_mixed(x, n_x, w);
-			assert(!std::isnan(p));
-			return p;
+		case (DistributionType::TRIANGLE): {
+			auto intersection = primitive_->intersect({w, x});
+			assert(!intersection.has_value());
+			auto y = intersection.value().point;
+			auto n_y = intersection.value().normal;
+			return pdf1_triangle(x, y, n_y);
 		}
+		case (DistributionType::MIXED):
+			return pdf_mixed(x, n_x, w);
+		case (DistributionType::MIXED_ON_PRIMITIVES):
+			return pdf_mixed_on_primitives(x, n_x, w);
 		default:
 			unreachable();
 	}

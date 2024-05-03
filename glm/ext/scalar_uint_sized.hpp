@@ -54,16 +54,16 @@ namespace detail
 	/// @addtogroup ext_scalar_uint_sized
 	/// @{
 
-	/// 8 bit unsigned integer type.
+	/// 8 bit unsigned integer type_.
 	typedef detail::uint8		uint8;
 
-	/// 16 bit unsigned integer type.
+	/// 16 bit unsigned integer type_.
 	typedef detail::uint16		uint16;
 
-	/// 32 bit unsigned integer type.
+	/// 32 bit unsigned integer type_.
 	typedef detail::uint32		uint32;
 
-	/// 64 bit unsigned integer type.
+	/// 64 bit unsigned integer type_.
 	typedef detail::uint64		uint64;
 
 	/// @}

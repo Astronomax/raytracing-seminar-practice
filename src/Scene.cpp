@@ -1,21 +1,23 @@
 #include <Scene.hpp>
 #include <memory>
 
-void Scene::init(Random &rnd) {
-	std::vector<std::unique_ptr<Distrib>> primitive_distribs;
-	for (const auto &primitive : primitives) {
-		if (primitive->emission.x > 0 || primitive->emission.y > 0 || primitive->emission.z > 0) {
+std::unique_ptr<Distribution>
+build_distribution(const std::shared_ptr<Random>& rnd, const Scene &scene)
+{
+	std::vector<std::unique_ptr<Distribution>> primitive_distributions;
+	for (const auto &primitive : scene.primitives) {
+		if (primitive->emission.x > 0.f || primitive->emission.y > 0.f || primitive->emission.z > 0.f) {
 			switch (primitive->type) {
 				case (PrimitiveType::BOX): {
-					auto box = std::make_unique<Distrib>(rnd, DistribType::BOX);
-					box->init_box(*primitive);
-					primitive_distribs.push_back(std::move(box));
+					auto box = std::make_unique<Distribution>(rnd, DistributionType::BOX);
+					box->init_box(primitive);
+					primitive_distributions.push_back(std::move(box));
 					break;
 				}
 				case (PrimitiveType::ELLIPSOID): {
-					auto ellipsoid = std::make_unique<Distrib>(rnd, DistribType::ELLIPSOID);
-					ellipsoid->init_ellipsoid(*primitive);
-					primitive_distribs.push_back(std::move(ellipsoid));
+					auto ellipsoid = std::make_unique<Distribution>(rnd, DistributionType::ELLIPSOID);
+					ellipsoid->init_ellipsoid(primitive);
+					primitive_distributions.push_back(std::move(ellipsoid));
 					break;
 				}
 				default:
@@ -23,19 +25,25 @@ void Scene::init(Random &rnd) {
 			}
 		}
 	}
-	std::vector<std::unique_ptr<Distrib>> distribs;
+	std::vector<std::unique_ptr<Distribution>> distributions;
 	{
-		auto cosine = std::make_unique<Distrib>(rnd, DistribType::COSINE);
-		distribs.push_back(std::move(cosine));
+		auto cosine = std::make_unique<Distribution>(rnd, DistributionType::COSINE);
+		distributions.push_back(std::move(cosine));
 	}
-	if (!primitive_distribs.empty()) {
-		auto mixed = std::make_unique<Distrib>(rnd, DistribType::MIXED);
-		mixed->init_mixed(std::move(primitive_distribs));
-		distribs.push_back(std::move(mixed));
+	if (!primitive_distributions.empty()) {
+		auto mixed = std::make_unique<Distribution>(rnd, DistributionType::MIXED_ON_PRIMITIVES);
+		mixed->init_mixed_on_primitives(primitive_distributions);
+		distributions.push_back(std::move(mixed));
 	}
 	{
-		auto mixed = std::make_unique<Distrib>(rnd, DistribType::MIXED);
-		mixed->init_mixed(std::move(distribs));
-		distrib = std::move(mixed);
+		auto mixed = std::make_unique<Distribution>(rnd, DistributionType::MIXED);
+		mixed->init_mixed(std::move(distributions));
+		return mixed;
 	}
+}
+
+void
+Scene::init(const std::shared_ptr<Random>& rnd) {
+	distribution = build_distribution(rnd, *this);
+	bvh = BVH(primitives);
 }

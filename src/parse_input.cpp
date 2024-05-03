@@ -1,6 +1,8 @@
-#include "parse_input.hpp"
-#include "utils.hpp"
+#include <parse_input.hpp>
 
+#include <utils.hpp>
+
+#include <algorithm>
 #include <fstream>
 
 enum class Command {
@@ -16,6 +18,7 @@ enum class Command {
 	PLANE,
 	ELLIPSOID,
 	BOX,
+	TRIANGLE,
 	POSITION,
 	ROTATION,
 	COLOR,
@@ -42,6 +45,7 @@ parse_command(std::string &command_name)
 	if (command_name == "PLANE")		return Command::PLANE;
 	if (command_name == "ELLIPSOID")	return Command::ELLIPSOID;
 	if (command_name == "BOX")		return Command::BOX;
+	if (command_name == "TRIANGLE")		return Command::TRIANGLE;
 	if (command_name == "POSITION")		return Command::POSITION;
 	if (command_name == "ROTATION")		return Command::ROTATION;
 	if (command_name == "COLOR") 		return Command::COLOR;
@@ -58,6 +62,7 @@ Scene
 parse_input(std::ifstream &s)
 {
 	Scene scene;
+	std::vector<std::shared_ptr<Primitive>> primitives;
 	std::string command_name;
 	while (s >> command_name) {
 		auto command = parse_command(command_name);
@@ -97,41 +102,48 @@ parse_input(std::ifstream &s)
 				s >> scene.camera.fov_x;
 				break;
 			case (Command::NEW_PRIMITIVE):
-				scene.primitives.emplace_back(new Primitive());
+				primitives.push_back(std::make_shared<Primitive>());
 				break;
 			case (Command::PLANE): {
-				scene.primitives.back()->type = PrimitiveType::PLANE;
-				auto primitive = scene.primitives.back();
-				s >> primitive->primitive_specific.x
-				  >> primitive->primitive_specific.y
-				  >> primitive->primitive_specific.z;
+				primitives.back()->type = PrimitiveType::PLANE;
+				auto primitive = primitives.back();
+				s >> primitive->primitive_specific[0].x
+				  >> primitive->primitive_specific[0].y
+				  >> primitive->primitive_specific[0].z;
 				break;
 			}
 			case (Command::ELLIPSOID): {
-				scene.primitives.back()->type = PrimitiveType::ELLIPSOID;
-				auto primitive = scene.primitives.back();
-				s >> primitive->primitive_specific.x
-				  >> primitive->primitive_specific.y
-				  >> primitive->primitive_specific.z;
+				primitives.back()->type = PrimitiveType::ELLIPSOID;
+				auto primitive = primitives.back();
+				s >> primitive->primitive_specific[0].x
+				  >> primitive->primitive_specific[0].y
+				  >> primitive->primitive_specific[0].z;
 				break;
 			}
 			case (Command::BOX): {
-				scene.primitives.back()->type = PrimitiveType::BOX;
-				auto primitive = scene.primitives.back();
-				s >> primitive->primitive_specific.x
-				  >> primitive->primitive_specific.y
-				  >> primitive->primitive_specific.z;
+				primitives.back()->type = PrimitiveType::BOX;
+				auto primitive = primitives.back();
+				s >> primitive->primitive_specific[0].x
+				  >> primitive->primitive_specific[0].y
+				  >> primitive->primitive_specific[0].z;
+				break;
+			}
+			case (Command::TRIANGLE): {
+				primitives.back()->type = PrimitiveType::TRIANGLE;
+				auto primitive = primitives.back();
+				for (auto & i : primitive->primitive_specific)
+					s >> i.x >> i.y >> i.z;
 				break;
 			}
 			case (Command::POSITION): {
-				auto primitive = scene.primitives.back();
+				auto primitive = primitives.back();
 				s >> primitive->position.x
 				  >> primitive->position.y
 				  >> primitive->position.z;
 				break;
 			}
 			case (Command::ROTATION): {
-				auto primitive = scene.primitives.back();
+				auto primitive = primitives.back();
 				s >> primitive->rotation.x
 				  >> primitive->rotation.y
 				  >> primitive->rotation.z
@@ -139,29 +151,29 @@ parse_input(std::ifstream &s)
 				break;
 			}
 			case (Command::COLOR): {
-				auto primitive = scene.primitives.back();
+				auto primitive = primitives.back();
 				s >> primitive->color.r
 				  >> primitive->color.g
 				  >> primitive->color.b;
 				break;
 			}
 			case (Command::METALLIC): {
-				auto primitive = scene.primitives.back();
+				auto primitive = primitives.back();
 				primitive->material = Material::METALLIC;
 				break;
 			}
 			case (Command::DIELECTRIC): {
-				auto primitive = scene.primitives.back();
+				auto primitive = primitives.back();
 				primitive->material = Material::DIELECTRIC;
 				break;
 			}
 			case (Command::IOR): {
-				auto primitive = scene.primitives.back();
+				auto primitive = primitives.back();
 				s >> primitive->ior;
 				break;
 			}
 			case (Command::EMISSION): {
-				auto primitive = scene.primitives.back();
+				auto primitive = primitives.back();
 				s >> primitive->emission.r
 				  >> primitive->emission.g
 				  >> primitive->emission.b;
@@ -179,6 +191,11 @@ parse_input(std::ifstream &s)
 				unreachable();
 		}
 	}
+	auto planes_end = std::partition(primitives.begin(), primitives.end(),
+		       [](const PrimitivePtr &primitive)
+	{ return primitive->type == PrimitiveType::PLANE; });
+	scene.primitives = std::vector<PrimitivePtr>(planes_end, primitives.end());
+	scene.planes = std::vector<PrimitivePtr>(primitives.begin(), planes_end);
 	scene.camera.fov_y = atanf(tanf(scene.camera.fov_x * 0.5f) \
 			* (float)scene.camera.height / (float)scene.camera.width) * 2.f;
 	return scene;

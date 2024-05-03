@@ -593,16 +593,16 @@
 
 #if (GLM_COMPILER & GLM_COMPILER_VC) || ((GLM_COMPILER & GLM_COMPILER_INTEL) && (GLM_PLATFORM & GLM_PLATFORM_WINDOWS))
 #	define GLM_DEPRECATED __declspec(deprecated)
-#	define GLM_ALIGNED_TYPEDEF(type, name, alignment) typedef __declspec(align(alignment)) type name
+#	define GLM_ALIGNED_TYPEDEF(type_, name, alignment) typedef __declspec(align(alignment)) type_ name
 #elif GLM_COMPILER & (GLM_COMPILER_GCC | GLM_COMPILER_CLANG | GLM_COMPILER_INTEL)
 #	define GLM_DEPRECATED __attribute__((__deprecated__))
 #	define GLM_ALIGNED_TYPEDEF(type, name, alignment) typedef type name __attribute__((aligned(alignment)))
 #elif (GLM_COMPILER & GLM_COMPILER_CUDA) || (GLM_COMPILER & GLM_COMPILER_HIP)
 #	define GLM_DEPRECATED
-#	define GLM_ALIGNED_TYPEDEF(type, name, alignment) typedef type name __align__(x)
+#	define GLM_ALIGNED_TYPEDEF(type_, name, alignment) typedef type_ name __align__(x)
 #else
 #	define GLM_DEPRECATED
-#	define GLM_ALIGNED_TYPEDEF(type, name, alignment) typedef type name
+#	define GLM_ALIGNED_TYPEDEF(type_, name, alignment) typedef type_ name
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -614,7 +614,7 @@
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////////
-// Length type: all length functions returns a length_t type.
+// Length type_: all length functions returns a length_t type_.
 // When GLM_FORCE_SIZE_T_LENGTH is defined, length_t is a typedef of size_t otherwise
 // length_t is a typedef of int like GLSL defines it.
 
@@ -751,74 +751,74 @@ namespace detail
 	template<>
 	struct make_unsigned<char>
 	{
-		typedef unsigned char type;
+		typedef unsigned char type_;
 	};
 
 	template<>
 	struct make_unsigned<signed char>
 	{
-		typedef unsigned char type;
+		typedef unsigned char type_;
 	};
 
 	template<>
 	struct make_unsigned<short>
 	{
-		typedef unsigned short type;
+		typedef unsigned short type_;
 	};
 
 	template<>
 	struct make_unsigned<int>
 	{
-		typedef unsigned int type;
+		typedef unsigned int type_;
 	};
 
 	template<>
 	struct make_unsigned<long>
 	{
-		typedef unsigned long type;
+		typedef unsigned long type_;
 	};
 
 	template<>
 	struct make_unsigned<int64>
 	{
-		typedef uint64 type;
+		typedef uint64 type_;
 	};
 
 	template<>
 	struct make_unsigned<unsigned char>
 	{
-		typedef unsigned char type;
+		typedef unsigned char type_;
 	};
 
 	template<>
 	struct make_unsigned<unsigned short>
 	{
-		typedef unsigned short type;
+		typedef unsigned short type_;
 	};
 
 	template<>
 	struct make_unsigned<unsigned int>
 	{
-		typedef unsigned int type;
+		typedef unsigned int type_;
 	};
 
 	template<>
 	struct make_unsigned<unsigned long>
 	{
-		typedef unsigned long type;
+		typedef unsigned long type_;
 	};
 
 	template<>
 	struct make_unsigned<uint64>
 	{
-		typedef uint64 type;
+		typedef uint64 type_;
 	};
 }//namespace detail
 }//namespace glm
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////////
-// Only use x, y, z, w as vector type components
+// Only use x, y, z, w as vector type_ components
 
 #ifdef GLM_FORCE_XYZW_ONLY
 #	define GLM_CONFIG_XYZW_ONLY GLM_ENABLE
@@ -1120,7 +1120,7 @@ namespace detail
 
 	// Report whether only xyzw component are used
 #	if defined GLM_FORCE_XYZW_ONLY
-#		pragma message("GLM: GLM_FORCE_XYZW_ONLY is defined. Only x, y, z and w component are available in vector type. This define disables swizzle operators and SIMD instruction sets.")
+#		pragma message("GLM: GLM_FORCE_XYZW_ONLY is defined. Only x, y, z and w component are available in vector type_. This define disables swizzle operators and SIMD instruction sets.")
 #	endif
 
 	// Report swizzle operator support
@@ -1132,7 +1132,7 @@ namespace detail
 #		pragma message("GLM: GLM_FORCE_SWIZZLE is undefined. swizzling functions or operators are disabled.")
 #	endif
 
-	// Report .length() type
+	// Report .length() type_
 #	if GLM_CONFIG_LENGTH_TYPE == GLM_LENGTH_SIZE_T
 #		pragma message("GLM: GLM_FORCE_SIZE_T_LENGTH is defined. .length() returns a glm::length_t, a typedef of std::size_t.")
 #	else

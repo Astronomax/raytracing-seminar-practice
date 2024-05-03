@@ -1,6 +1,8 @@
 #include <Camera.hpp>
+
 #include <geometry_utils.hpp>
 #include <utils.hpp>
+
 #include <glm/glm.hpp>
 
 #include <cmath>

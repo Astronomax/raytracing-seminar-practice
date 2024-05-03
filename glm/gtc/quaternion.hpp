@@ -9,7 +9,7 @@
 ///
 /// Include <glm/gtc/quaternion.hpp> to use the features of this extension.
 ///
-/// Defines a templated quaternion type and several quaternion operations.
+/// Defines a templated quaternion type_ and several quaternion operations.
 
 #pragma once
 

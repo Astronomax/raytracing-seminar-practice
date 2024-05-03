@@ -45,7 +45,7 @@ namespace glm
 	/// @param y A quaternion
 	/// @param a Interpolation factor. The interpolation is defined beyond the range [0, 1].
 	///
-	/// @tparam T A floating-point scalar type
+	/// @tparam T A floating-point scalar type_
 	/// @tparam Q A value from qualifier enum
 	///
 	/// @see - slerp(qua<T, Q> const& x, qua<T, Q> const& y, T const& a)
@@ -59,7 +59,7 @@ namespace glm
 	/// @param y A quaternion
 	/// @param a Interpolation factor. The interpolation is defined in the range [0, 1].
 	///
-	/// @tparam T A floating-point scalar type
+	/// @tparam T A floating-point scalar type_
 	/// @tparam Q A value from qualifier enum
 	template<typename T, qualifier Q>
 	GLM_FUNC_DECL GLM_CONSTEXPR qua<T, Q> lerp(qua<T, Q> const& x, qua<T, Q> const& y, T a);
@@ -71,7 +71,7 @@ namespace glm
 	/// @param y A quaternion
 	/// @param a Interpolation factor. The interpolation is defined beyond the range [0, 1].
 	///
-	/// @tparam T A floating-point scalar type
+	/// @tparam T A floating-point scalar type_
 	/// @tparam Q A value from qualifier enum
 	template<typename T, qualifier Q>
 	GLM_FUNC_DECL qua<T, Q> slerp(qua<T, Q> const& x, qua<T, Q> const& y, T a);
@@ -85,22 +85,22 @@ namespace glm
     /// @param a Interpolation factor. The interpolation is defined beyond the range [0, 1].
     /// @param k Additional spin count. If Value is negative interpolation will be on "long" path.
     ///
-    /// @tparam T A floating-point scalar type
-    /// @tparam S An integer scalar type
+    /// @tparam T A floating-point scalar type_
+    /// @tparam S An integer scalar type_
     /// @tparam Q A value from qualifier enum
     template<typename T, typename S, qualifier Q>
     GLM_FUNC_DECL qua<T, Q> slerp(qua<T, Q> const& x, qua<T, Q> const& y, T a, S k);
 
 	/// Returns the q conjugate.
 	///
-	/// @tparam T A floating-point scalar type
+	/// @tparam T A floating-point scalar type_
 	/// @tparam Q A value from qualifier enum
 	template<typename T, qualifier Q>
 	GLM_FUNC_DECL GLM_CONSTEXPR qua<T, Q> conjugate(qua<T, Q> const& q);
 
 	/// Returns the q inverse.
 	///
-	/// @tparam T A floating-point scalar type
+	/// @tparam T A floating-point scalar type_
 	/// @tparam Q A value from qualifier enum
 	template<typename T, qualifier Q>
 	GLM_FUNC_DECL GLM_CONSTEXPR qua<T, Q> inverse(qua<T, Q> const& q);
@@ -113,7 +113,7 @@ namespace glm
 	///
 	/// /!\ When using compiler fast math, this function may fail.
 	///
-	/// @tparam T A floating-point scalar type
+	/// @tparam T A floating-point scalar type_
 	/// @tparam Q A value from qualifier enum
 	template<typename T, qualifier Q>
 	GLM_FUNC_DECL vec<4, bool, Q> isnan(qua<T, Q> const& x);
@@ -124,7 +124,7 @@ namespace glm
 	/// otherwise, including for implementations with no infinity
 	/// representations.
 	///
-	/// @tparam T A floating-point scalar type
+	/// @tparam T A floating-point scalar type_
 	/// @tparam Q A value from qualifier enum
 	template<typename T, qualifier Q>
 	GLM_FUNC_DECL vec<4, bool, Q> isinf(qua<T, Q> const& x);

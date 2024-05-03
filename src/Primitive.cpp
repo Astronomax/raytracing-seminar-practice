@@ -1,6 +1,7 @@
-#include "Primitive.hpp"
-#include "geometry_utils.hpp"
-#include "utils.hpp"
+#include <Primitive.hpp>
+
+#include <geometry_utils.hpp>
+#include <utils.hpp>
 
 #include "glm/geometric.hpp"
 
@@ -24,15 +25,16 @@ get_square_equation_roots(float a, float b, float c, float &t1, float &t2)
 		return false;
 	t1 = (-b - sqrtf(d)) / (2.f * a);
 	t2 = (-b + sqrtf(d)) / (2.f * a);
+	assert(!std::isnan(t1));
+	assert(!std::isnan(t2));
 	return true;
 }
 
 bool
 min_geq_zero(float t1, float t2, float &t)
 {
-	//assert(!std::isnan(t1));
-	//assert(!std::isnan(t2));
-	//assert(t1 <= t2);
+	assert(!std::isnan(t1));
+	assert(!std::isnan(t2));
 	t = (t1 >= 0.f) ? t1 : t2;
 	return t >= 0.f;
 }
@@ -41,7 +43,7 @@ std::optional<Intersection>
 Primitive::intersect_ignore_transformation_ellipsoid(Ray ray) const
 {
 	auto divided_ray = ray;
-	auto &radius = primitive_specific;
+	auto &radius = primitive_specific[0];
 	divided_ray.origin /= radius;
 	divided_ray.direction /= radius;
 	float t1, t2, t;
@@ -60,6 +62,7 @@ Primitive::intersect_ignore_transformation_ellipsoid(Ray ray) const
 	intersection.point = walk_along(ray, t);
 	intersection.normal = glm::normalize(intersection.point / (radius * radius));
 	intersection.inside = (t1 < 0.f);
+	intersection.obstacle = shared_from_this();
 	if (intersection.inside)
 		intersection.normal *= -1.f;
 	return intersection;
@@ -68,7 +71,7 @@ Primitive::intersect_ignore_transformation_ellipsoid(Ray ray) const
 std::optional<Intersection>
 Primitive::intersect_ignore_transformation_plane(Ray ray) const
 {
-	auto &normal = primitive_specific;
+	auto &normal = primitive_specific[0];
 	auto t = -glm::dot(ray.origin, normal)
 		 / glm::dot(ray.direction, normal);
 	if (t < 0.f)
@@ -79,6 +82,7 @@ Primitive::intersect_ignore_transformation_plane(Ray ray) const
 	intersection.point = walk_along(ray, t);
 	intersection.normal = glm::normalize(normal);
 	intersection.inside = false;
+	intersection.obstacle = shared_from_this();
 	if (glm::dot(intersection.normal, ray.direction) > 0.f)
 		intersection.normal *= -1.f;
 	return intersection;
@@ -87,7 +91,7 @@ Primitive::intersect_ignore_transformation_plane(Ray ray) const
 std::optional<Intersection>
 Primitive::intersect_ignore_transformation_box(Ray ray) const
 {
-	auto &diagonal = primitive_specific;
+	auto &diagonal = primitive_specific[0];
 	auto v1 = (diagonal - ray.origin) / ray.direction;
 	auto v2 = (-diagonal - ray.origin) / ray.direction;
 	if (v1.x > v2.x) std::swap(v1.x, v2.x);
@@ -114,9 +118,35 @@ Primitive::intersect_ignore_transformation_box(Ray ray) const
 	if (std::abs(std::abs(normal.z) - max_component) > EPS5)
 		normal.z = 0.f;
 	intersection.inside = (t1 < 0.f);
+	intersection.obstacle = shared_from_this();
 	if (intersection.inside)
 		normal *= -1.f;
 	intersection.normal = glm::normalize(normal);
+	return intersection;
+}
+
+std::optional<Intersection>
+Primitive::intersect_ignore_transformation_triangle(Ray ray) const
+{
+	const auto &a = primitive_specific[0];
+	const auto &b = primitive_specific[1] - a;
+	const auto &c = primitive_specific[2] - a;
+	const auto normal = glm::cross(b, c);
+	auto plane = std::make_shared<Primitive>();
+	plane->type = PrimitiveType::PLANE;
+	plane->primitive_specific[0] = normal;
+	auto intersection = plane->intersect({ray.direction, ray.origin - a});
+	if (!intersection.has_value())
+		return std::nullopt;
+	auto p = intersection->point;
+	if (glm::dot(glm::cross(b, p), normal) < 0)
+		return std::nullopt;
+	if (glm::dot(glm::cross(p, c), normal) < 0)
+		return std::nullopt;
+	if (glm::dot(glm::cross(c - b, p - b), normal) < 0)
+		return std::nullopt;
+	intersection->point += a;
+	intersection->obstacle = shared_from_this();
 	return intersection;
 }
 
@@ -136,6 +166,9 @@ Primitive::intersect(Ray ray) const
 		case (PrimitiveType::BOX):
 			intersection = intersect_ignore_transformation_box(in_local);
 			break;
+		case (PrimitiveType::TRIANGLE):
+			intersection = intersect_ignore_transformation_triangle(in_local);
+			break;
 		default:
 			unreachable();
 	}
@@ -144,4 +177,8 @@ Primitive::intersect(Ray ray) const
 	intersection->point = walk_along(ray, intersection->distance);
 	intersection->normal = rotate(intersection->normal, conjugate(rotation));
 	return intersection;
+}
+
+PrimitivePtr Primitive::getptr() {
+	return shared_from_this();
 }

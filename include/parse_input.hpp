@@ -3,8 +3,8 @@
 
 #include "Scene.hpp"
 
-#include <vector>
 #include <istream>
+#include <vector>
 
 Scene parse_input(std::ifstream &s);
 

@@ -1,4 +1,4 @@
-#include "geometry_utils.hpp"
+#include <geometry_utils.hpp>
 
 glm::vec3
 rotate(glm::vec3 v, glm::quat q)

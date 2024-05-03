@@ -54,16 +54,16 @@ namespace detail
 	/// @addtogroup ext_scalar_int_sized
 	/// @{
 
-	/// 8 bit signed integer type.
+	/// 8 bit signed integer type_.
 	typedef detail::int8		int8;
 
-	/// 16 bit signed integer type.
+	/// 16 bit signed integer type_.
 	typedef detail::int16		int16;
 
-	/// 32 bit signed integer type.
+	/// 32 bit signed integer type_.
 	typedef detail::int32		int32;
 
-	/// 64 bit signed integer type.
+	/// 64 bit signed integer type_.
 	typedef detail::int64		int64;
 
 	/// @}
