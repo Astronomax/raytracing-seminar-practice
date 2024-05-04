@@ -25,17 +25,17 @@ enum class Material {
 };
 
 struct Primitive;
-typedef std::shared_ptr<const Primitive> PrimitivePtr;
+//typedef std::shared_ptr<const Primitive> PrimitivePtr;
 
 struct Intersection {
 	float distance;
 	glm::vec3 point;
 	glm::vec3 normal;
 	bool inside;
-	PrimitivePtr obstacle;
+	const Primitive *obstacle;
 };
 
-struct Primitive : public std::enable_shared_from_this<Primitive> {
+struct Primitive/* : public std::enable_shared_from_this<Primitive>*/ {
 	std::optional<Intersection> intersect(Ray ray) const;
 	std::optional<Intersection> intersect_ignore_transformation_ellipsoid(Ray ray) const;
 	std::optional<Intersection> intersect_ignore_transformation_plane(Ray ray) const;

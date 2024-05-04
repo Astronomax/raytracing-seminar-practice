@@ -8,13 +8,12 @@
 #include <iostream>
 
 bool
-intersect(const Scene &scene, Ray ray,
-	Intersection &intersection)
+intersect(const Scene &scene, Ray ray, Intersection &intersection)
 {
 	bool has_intersection = false;
 	float min_distance = INF;
 	for (auto &primitive : scene.planes) {
-		auto intersection_opt = primitive->intersect(ray);
+		auto intersection_opt = primitive.intersect(ray);
 		if (!intersection_opt.has_value())
 			continue;
 		float distance = intersection_opt.value().distance;
@@ -37,26 +36,26 @@ intersect(const Scene &scene, Ray ray,
 }
 
 Color
-raytrace(const Scene &scene, const std::shared_ptr<Random> &rnd, Ray ray, int depth = 0);
+raytrace(const Scene &scene, Random &rnd, Ray ray, int depth = 0);
 
 Color
-diffuse_raytrace(const Scene &scene, const std::shared_ptr<Random> &rnd,
-		 const PrimitivePtr &primitive, glm::vec3 point,
+diffuse_raytrace(const Scene &scene, Random &rnd,
+		 const Primitive *primitive, glm::vec3 point,
 		 glm::vec3 normal, Ray ray, int depth)
 {
-	auto w = scene.distribution->sample(point + EPS5 * normal, normal);
+	auto w = scene.distribution.sample(rnd, point + EPS5 * normal, normal);
 	assert(std::abs(glm::length(w) - 1.f) < EPS5);
 	auto w_normal_dot = glm::dot(w, normal);
 	if (w_normal_dot < 0.f)
 		return primitive->emission;
-	auto p = scene.distribution->pdf(point + EPS5 * normal, normal, w);
+	auto p = scene.distribution.pdf(point + EPS5 * normal, normal, w);
 	Ray wRay = {w, point + w * EPS5};
 	return primitive->emission + 1.f / (PI * p) * w_normal_dot * raytrace(scene, rnd, wRay, depth + 1) * primitive->color;
 }
 
 Color
-metallic_raytrace(const Scene &scene, const std::shared_ptr<Random> &rnd,
-		  const PrimitivePtr &primitive, glm::vec3 point,
+metallic_raytrace(const Scene &scene, Random &rnd,
+		  const Primitive *primitive, glm::vec3 point,
 		  glm::vec3 normal, Ray ray, int depth)
 {
 	auto reflect_dir = ray.direction - 2.f * normal * glm::dot(normal, ray.direction);
@@ -65,8 +64,8 @@ metallic_raytrace(const Scene &scene, const std::shared_ptr<Random> &rnd,
 }
 
 Color
-dielectric_raytrace(const Scene &scene, const std::shared_ptr<Random> &rnd,
-		    const PrimitivePtr &primitive, glm::vec3 point,
+dielectric_raytrace(const Scene &scene, Random &rnd,
+		    const Primitive *primitive, glm::vec3 point,
 		    glm::vec3 normal, Ray ray, bool inside, int depth)
 {
 	auto normal_ray_dot = glm::dot(normal, ray.direction);
@@ -78,7 +77,7 @@ dielectric_raytrace(const Scene &scene, const std::shared_ptr<Random> &rnd,
 	auto sinTheta2 = eta1 / eta2 * sinTheta1;
 	auto r0 = powf((eta1 - eta2) / (eta1 + eta2), 2.f);
 	auto r = r0 + (1.f - r0) * powf(1.f + normal_ray_dot, 5.f);
-	if (std::abs(sinTheta2) > 1.f || rnd->uniform() < r) {
+	if (std::abs(sinTheta2) > 1.f || rnd.uniform() < r) {
 		auto reflect_dir = ray.direction - 2.f * normal_ray_dot * normal;
 		Ray reflect_ray = {reflect_dir, point + reflect_dir * EPS5};
 		auto reflected = raytrace(scene, rnd, reflect_ray, depth + 1);
@@ -94,14 +93,14 @@ dielectric_raytrace(const Scene &scene, const std::shared_ptr<Random> &rnd,
 }
 
 Color
-raytrace(const Scene &scene, const std::shared_ptr<Random> &rnd, Ray ray, int depth)
+raytrace(const Scene &scene, Random &rnd, Ray ray, int depth)
 {
 	if (depth >= scene.ray_depth)
 		return black;
 
 	glm::vec3 point, normal;
 	bool inside;
-	PrimitivePtr primitive;
+	const Primitive *primitive;
 	{
 		Intersection intersection{};
 		if (!intersect(scene, ray, intersection))
@@ -125,19 +124,20 @@ raytrace(const Scene &scene, const std::shared_ptr<Random> &rnd, Ray ray, int de
 }
 
 Image
-render(std::shared_ptr<Random> rnd, Scene &scene)
+render(Scene &scene)
 {
 	const auto &camera = scene.camera;
 	Image image(camera.height, camera.width);
-
+	//Random rnd;
 	#pragma omp parallel for schedule(dynamic, 8)
 	for (int pixel = 0; pixel < camera.height * camera.width; pixel++) {
+		Random rnd;
 		int i = pixel / camera.width;
 		int j = pixel % camera.width;
 		Color color = black;
 		for (int k = 0; k < scene.samples; k++) {
-			float x = (float) i + rnd->uniform();
-			float y = (float) j + rnd->uniform();
+			float x = (float) i + rnd.uniform();
+			float y = (float) j + rnd.uniform();
 			auto ray = camera.ray_throw(x, y);
 			color += raytrace(scene, rnd, ray);
 		}

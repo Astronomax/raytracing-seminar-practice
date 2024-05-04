@@ -11,17 +11,17 @@
 #include <vector>
 
 struct Scene {
-	void init(const std::shared_ptr<Random>& rnd);
+	void init();
 
 	Camera camera;
 	Color bg_color = black;
 	BVH bvh;
-	std::vector<PrimitivePtr> primitives;
-	std::vector<PrimitivePtr> planes;
+	std::vector<Primitive> primitives;
+	std::vector<Primitive> planes;
 	int ray_depth = 1;
 	int samples;
 	Color ambient;
-	std::unique_ptr<Distribution> distribution;
+	Distribution distribution;
 };
 
 

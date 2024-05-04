@@ -27,7 +27,7 @@ enum class Axis {
     AXIS_COUNT
 };
 
-AABB build_aabb(const PrimitivePtr& primitive) {
+AABB build_aabb(const Primitive* primitive) {
 	AABB aabb_ignore_transformation;
 	switch(primitive->type) {
 		case (PrimitiveType::PLANE):
@@ -76,7 +76,7 @@ float aabb_surface_area(const AABB &aabb) {
 typedef std::tuple<float, Axis, int> Split;
 
 Split
-seek_for_best_split(std::vector<PrimitivePtr> &primitives,
+seek_for_best_split(std::vector<const Primitive*> &primitives,
 		 std::unordered_map<const Primitive*, AABB> &aabbs,
 		 int first, int count)
 {
@@ -84,17 +84,17 @@ seek_for_best_split(std::vector<PrimitivePtr> &primitives,
 	for (int i = 0; i < (int)Axis::AXIS_COUNT; i++) {
 		std::sort(primitives.begin() + first,
 			  primitives.begin() + first + count,
-			  [i](const PrimitivePtr &a, const PrimitivePtr &b)
+			  [i](const Primitive* &a, const Primitive* &b)
 		{ return a->position[i] < b->position[i]; });
 		std::vector<float> scores(count + 1);
 		AABB aabb;
 		for(int j = 0; j < count; j++) {
-			aabb.extend(aabbs[primitives[first + j].get()]);
+			aabb.extend(aabbs[primitives[first + j]]);
 			scores[j + 1] += aabb_surface_area(aabb) * (float)(j + 1);
 		}
 		aabb = AABB();
 		for(int j = count - 1; j >= 0; j--) {
-			aabb.extend(aabbs[primitives[first + j].get()]);
+			aabb.extend(aabbs[primitives[first + j]]);
 			scores[j] += aabb_surface_area(aabb) * (float)(count - j);
 		}
 		for(int j = 1; j < count; j++)
@@ -111,7 +111,7 @@ BVH::build_node(std::unordered_map<const Primitive*, AABB> &aabbs,
 	current.first_primitive_id = first;
 	current.primitive_count = count;
 	for (int i = first; i < first + count; i++)
-		current.aabb.extend(aabbs[primitives[i].get()]);
+		current.aabb.extend(aabbs[primitives[i]]);
 	int id = (int)nodes.size();
 	nodes.push_back(current);
 	if (count <= 1)
@@ -123,7 +123,7 @@ BVH::build_node(std::unordered_map<const Primitive*, AABB> &aabbs,
 	auto split_axis = (int)std::get<1>(split);
 	std::sort(primitives.begin() + first,
 		  primitives.begin() + first + count,
-		  [i = split_axis](const PrimitivePtr &a, const PrimitivePtr &b)
+		  [i = split_axis](const Primitive* &a, const Primitive* &b)
 		  { return a->position[i] < b->position[i]; });
 	int left_count = std::get<2>(split);
 	nodes[id].left_child = build_node(aabbs, first, left_count);
@@ -131,16 +131,16 @@ BVH::build_node(std::unordered_map<const Primitive*, AABB> &aabbs,
 	return id;
 }
 
-BVH::BVH(const std::vector<PrimitivePtr> &primitives_) : primitives(primitives_)
+BVH::BVH(const std::vector<const Primitive*> &primitives_) : primitives(primitives_)
 {
 	std::unordered_map<const Primitive*, AABB> aabbs;
 	for(auto &primitive : primitives)
-		aabbs[primitive.get()] = build_aabb(primitive);
+		aabbs[primitive] = build_aabb(primitive);
 	root = build_node(aabbs, 0, (int)primitives.size());
 }
 
 std::optional<Intersection>
-BVH::intersect(Ray ray, int current_id, float min_distance) const
+BVH::intersect(Ray ray, int current_id, float min_distance, bool debug) const
 {
 	const auto &current = nodes[(current_id == -1) ? root : current_id];
 	auto intersection = current.aabb.intersect(ray);

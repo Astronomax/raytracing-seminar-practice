@@ -62,7 +62,7 @@ Primitive::intersect_ignore_transformation_ellipsoid(Ray ray) const
 	intersection.point = walk_along(ray, t);
 	intersection.normal = glm::normalize(intersection.point / (radius * radius));
 	intersection.inside = (t1 < 0.f);
-	intersection.obstacle = shared_from_this();
+	intersection.obstacle = this;
 	if (intersection.inside)
 		intersection.normal *= -1.f;
 	return intersection;
@@ -82,7 +82,7 @@ Primitive::intersect_ignore_transformation_plane(Ray ray) const
 	intersection.point = walk_along(ray, t);
 	intersection.normal = glm::normalize(normal);
 	intersection.inside = false;
-	intersection.obstacle = shared_from_this();
+	intersection.obstacle = this;
 	if (glm::dot(intersection.normal, ray.direction) > 0.f)
 		intersection.normal *= -1.f;
 	return intersection;
@@ -118,7 +118,7 @@ Primitive::intersect_ignore_transformation_box(Ray ray) const
 	if (std::abs(std::abs(normal.z) - max_component) > EPS5)
 		normal.z = 0.f;
 	intersection.inside = (t1 < 0.f);
-	intersection.obstacle = shared_from_this();
+	intersection.obstacle = this;
 	if (intersection.inside)
 		normal *= -1.f;
 	intersection.normal = glm::normalize(normal);
@@ -146,7 +146,7 @@ Primitive::intersect_ignore_transformation_triangle(Ray ray) const
 	if (glm::dot(glm::cross(c - b, p - b), normal) < 0)
 		return std::nullopt;
 	intersection->point += a;
-	intersection->obstacle = shared_from_this();
+	intersection->obstacle = this;
 	return intersection;
 }
 

@@ -34,29 +34,33 @@ enum class DistributionType {
 };
 
 struct Distribution {
-	explicit Distribution(std::shared_ptr<Random> rnd, DistributionType type);
+    	Distribution() = default;
 
-	void init_box(PrimitivePtr box);
+	explicit Distribution(DistributionType type);
 
-	void init_ellipsoid(PrimitivePtr ellipsoid);
+	void init_box(const Primitive* box);
 
-	void init_mixed(std::vector<std::unique_ptr<Distribution>> &&distributions);
+	void init_ellipsoid(const Primitive* ellipsoid);
 
-	void init_mixed_on_primitives(const std::vector<std::unique_ptr<Distribution>> &distributions);
+	void init_triangle(const Primitive* ellipsoid);
 
-	glm::vec3 sample_cosine(glm::vec3 n_x) const;
+	void init_mixed(std::vector<Distribution> &&distributions);
 
-	glm::vec3 sample_box(glm::vec3 x) const;
+	void init_mixed_on_primitives(const std::vector<Distribution> &distributions);
 
-	glm::vec3 sample_ellipsoid(glm::vec3 x) const;
+	glm::vec3 sample_cosine(Random &rnd_, glm::vec3 n_x) const;
 
-	glm::vec3 sample_triangle(glm::vec3 x) const;
+	glm::vec3 sample_box(Random &rnd_, glm::vec3 x) const;
 
-	glm::vec3 sample_mixed(glm::vec3 x, glm::vec3 n_x) const;
+	glm::vec3 sample_ellipsoid(Random &rnd_, glm::vec3 x) const;
 
-	glm::vec3 sample_mixed_on_primitives(glm::vec3 x, glm::vec3 n_x) const;
+	glm::vec3 sample_triangle(Random &rnd_, glm::vec3 x) const;
 
-    	glm::vec3 sample(glm::vec3 x, glm::vec3 n_x) const;
+	glm::vec3 sample_mixed(Random &rnd_, glm::vec3 x, glm::vec3 n_x) const;
+
+	glm::vec3 sample_mixed_on_primitives(Random &rnd_, glm::vec3 x, glm::vec3 n_x) const;
+
+    	glm::vec3 sample(Random &rnd_, glm::vec3 x, glm::vec3 n_x) const;
 
 	float pdf1_box(glm::vec3 x, glm::vec3 y, glm::vec3 n_y) const;
 
@@ -76,10 +80,9 @@ struct Distribution {
 
 	float pdf(glm::vec3 x, glm::vec3 n_x, glm::vec3 w) const;
 
-	std::shared_ptr<Random> rnd_;
 	DistributionType type_;
-	PrimitivePtr primitive_;
-	std::vector<std::unique_ptr<Distribution>> distributions_;
+	const Primitive *primitive_;
+	std::vector<Distribution> distributions_;
 	BVH bvh;
 };
 

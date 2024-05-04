@@ -22,7 +22,7 @@ struct AABB {
 	glm::vec3 aabb_max = glm::vec3(-INF, -INF, -INF);
 };
 
-AABB build_aabb(const PrimitivePtr& primitive);
+AABB build_aabb(const Primitive* primitive);
 
 struct Node {
 	AABB aabb;
@@ -34,13 +34,13 @@ struct Node {
 
 struct BVH {
 	BVH() = default;
-	BVH(const std::vector<PrimitivePtr> &primitives);
+	BVH(const std::vector<const Primitive*> &primitives);
     	int build_node(std::unordered_map<const Primitive*, AABB> &aabbs, int first, int count);
-	std::optional<Intersection> intersect(Ray ray, int current_id = -1, float min_distance = INF) const;
+	std::optional<Intersection> intersect(Ray ray, int current_id = -1, float min_distance = INF, bool debug = false) const;
 	std::vector<Node> nodes;
 	int root;
 
-	std::vector<PrimitivePtr> primitives;
+	std::vector<const Primitive*> primitives;
 };
 
 #endif //RAYTRACING_BVH_HPP
