@@ -23,7 +23,11 @@ intersect(const Scene &scene, Ray ray, Intersection &intersection)
 			has_intersection = true;
 		}
 	}
-	auto intersection_opt = scene.bvh.intersect(ray, scene.bvh.root, min_distance);
+	//static int cnt = 0;
+	//bool debug = (cnt++ == 15);
+	//std::cout << ray.direction.x << " " << ray.direction.y << " " << ray.direction.z << std::endl;
+	auto intersection_opt = scene.bvh.intersect(ray, scene.bvh.root, min_distance, false);//debug);
+	//if (debug) exit(0);
 	if (!intersection_opt.has_value())
 		return has_intersection;
 	float distance = intersection_opt.value().distance;
@@ -43,7 +47,11 @@ diffuse_raytrace(const Scene &scene, Random &rnd,
 		 const Primitive *primitive, glm::vec3 point,
 		 glm::vec3 normal, Ray ray, int depth)
 {
+	//std::cout << "diffuse_raytrace" << std::endl;
 	auto w = scene.distribution.sample(rnd, point + EPS5 * normal, normal);
+	//std::cout << point.x << " " << point.y << " " << point.z << std::endl;
+	//std::cout << w.x << " " << w.y << " " << w.z << std::endl;
+	//exit(0);
 	assert(std::abs(glm::length(w) - 1.f) < EPS5);
 	auto w_normal_dot = glm::dot(w, normal);
 	if (w_normal_dot < 0.f)
@@ -58,6 +66,7 @@ metallic_raytrace(const Scene &scene, Random &rnd,
 		  const Primitive *primitive, glm::vec3 point,
 		  glm::vec3 normal, Ray ray, int depth)
 {
+	//std::cout << "metallic_raytrace" << std::endl;
 	auto reflect_dir = ray.direction - 2.f * normal * glm::dot(normal, ray.direction);
 	Ray reflect_ray = {reflect_dir, point + reflect_dir * EPS5};
 	return primitive->emission + raytrace(scene, rnd, reflect_ray, depth + 1) * primitive->color;
@@ -68,6 +77,7 @@ dielectric_raytrace(const Scene &scene, Random &rnd,
 		    const Primitive *primitive, glm::vec3 point,
 		    glm::vec3 normal, Ray ray, bool inside, int depth)
 {
+	//std::cout << "dielectric_raytrace" << std::endl;
 	auto normal_ray_dot = glm::dot(normal, ray.direction);
 	auto eta1 = 1.f, eta2 = primitive->ior;
 	if (inside)
@@ -77,7 +87,9 @@ dielectric_raytrace(const Scene &scene, Random &rnd,
 	auto sinTheta2 = eta1 / eta2 * sinTheta1;
 	auto r0 = powf((eta1 - eta2) / (eta1 + eta2), 2.f);
 	auto r = r0 + (1.f - r0) * powf(1.f + normal_ray_dot, 5.f);
-	if (std::abs(sinTheta2) > 1.f || rnd.uniform() < r) {
+	auto u = rnd.uniform();
+	//std::cout << sinTheta2 << " " << u << std::endl;
+	if (std::abs(sinTheta2) > 1.f || u < r) {
 		auto reflect_dir = ray.direction - 2.f * normal_ray_dot * normal;
 		Ray reflect_ray = {reflect_dir, point + reflect_dir * EPS5};
 		auto reflected = raytrace(scene, rnd, reflect_ray, depth + 1);
@@ -95,6 +107,7 @@ dielectric_raytrace(const Scene &scene, Random &rnd,
 Color
 raytrace(const Scene &scene, Random &rnd, Ray ray, int depth)
 {
+	//std::cout << depth << std::endl;
 	if (depth >= scene.ray_depth)
 		return black;
 
@@ -128,17 +141,22 @@ render(Scene &scene)
 {
 	const auto &camera = scene.camera;
 	Image image(camera.height, camera.width);
-	//Random rnd;
+
 	#pragma omp parallel for schedule(dynamic, 8)
 	for (int pixel = 0; pixel < camera.height * camera.width; pixel++) {
-		Random rnd;
+		//std::cout << pixel << std::endl;
+		Random rnd(pixel);
 		int i = pixel / camera.width;
 		int j = pixel % camera.width;
 		Color color = black;
 		for (int k = 0; k < scene.samples; k++) {
-			float x = (float) i + rnd.uniform();
-			float y = (float) j + rnd.uniform();
+			float x = (float) j + rnd.uniform();
+			float y = (float) i + rnd.uniform();
 			auto ray = camera.ray_throw(x, y);
+			//std::cout << x << " " << y << std::endl;
+			//std::cout << ray.origin.x << " " << ray.origin.y << " " << ray.origin.z << std::endl;
+			//std::cout << ray.direction.x << " " << ray.direction.y << " " << ray.direction.z << std::endl;
+			//exit(0);
 			color += raytrace(scene, rnd, ray);
 		}
 		color /= (float) scene.samples;

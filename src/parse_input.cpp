@@ -98,9 +98,12 @@ parse_input(std::ifstream &s)
 				  >> scene.camera.forward.y
 				  >> scene.camera.forward.z;
 				break;
-			case (Command::CAMERA_FOV_X):
-				s >> scene.camera.fov_x;
+			case (Command::CAMERA_FOV_X): {
+				float fov_x;
+				s >> fov_x;
+				scene.camera.tan_fov_x = tanf(fov_x * 0.5f);
 				break;
+			}
 			case (Command::NEW_PRIMITIVE):
 				primitives.emplace_back();
 				break;
@@ -196,7 +199,6 @@ parse_input(std::ifstream &s)
 	{ return primitive.type == PrimitiveType::PLANE; });
 	scene.primitives = std::vector<Primitive>(planes_end, primitives.end());
 	scene.planes = std::vector<Primitive>(primitives.begin(), planes_end);
-	scene.camera.fov_y = atanf(tanf(scene.camera.fov_x * 0.5f) \
-			* (float)scene.camera.height / (float)scene.camera.width) * 2.f;
+	scene.camera.tan_fov_y = scene.camera.tan_fov_x * (float)scene.camera.height / (float)scene.camera.width;
 	return scene;
 }

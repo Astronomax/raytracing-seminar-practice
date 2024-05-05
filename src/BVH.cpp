@@ -1,6 +1,7 @@
 #include <BVH.hpp>
 #include <geometry_utils.hpp>
 #include <algorithm>
+#include <iostream>
 
 void AABB::extend(glm::vec3 p) {
 	aabb_min = glm::min(aabb_min, p);
@@ -12,12 +13,11 @@ void AABB::extend(AABB aabb) {
 	aabb_max = glm::max(aabb_max, aabb.aabb_max);
 }
 
-std::optional<Intersection> AABB::intersect(Ray ray) const {
-	auto p = std::make_shared<Primitive>();
-	p->type = PrimitiveType::BOX;
-	p->primitive_specific[0] = 0.5f * (aabb_max - aabb_min);
-	p->position = 0.5f * (aabb_max + aabb_min);
-	return p->intersect(ray);
+std::optional<IntersectionSmall> AABB::intersect(Ray ray) const {
+	return Primitive::intersect_ignore_transformation_box_small(0.5f * (aabb_max - aabb_min),
+		{ray.direction, ray.origin - 0.5f * (aabb_max + aabb_min)});
+	//intersection->point = walk_along(ray, intersection->distance);
+	//return intersection;
 }
 
 enum class Axis {
@@ -142,32 +142,63 @@ BVH::BVH(const std::vector<const Primitive*> &primitives_) : primitives(primitiv
 std::optional<Intersection>
 BVH::intersect(Ray ray, int current_id, float min_distance, bool debug) const
 {
+	//if (debug) {
+	//	std::cout << "come into " << current_id << std::endl;
+	//}
 	const auto &current = nodes[(current_id == -1) ? root : current_id];
-	auto intersection = current.aabb.intersect(ray);
-	if (!intersection.has_value())
+	auto aabb_intersection = current.aabb.intersect(ray);
+	if (!aabb_intersection.has_value()) {
+		//if (debug) {
+		//	std::cout << "exit from " << current_id << std::endl;
+		//}
 		return std::nullopt;
-	auto [t, point, normal, inside, obstacle] = intersection.value();
-	if (min_distance < t && !inside)
+	}
+	auto [t, inside] = aabb_intersection.value();
+	if (min_distance < t && !inside) {
+		//if (debug) {
+		//	std::cout << "exit from " << current_id << std::endl;
+		//}
 		return std::nullopt;
+	}
 	std::optional<Intersection> result = std::nullopt;
 	if (current.left_child != -1 && current.right_child != -1) {
+		//if (debug) {
+		//	std::cout << "iterate over children of " << current_id << std::endl;
+		//}
 		int children[2] = {current.left_child, current.right_child};
 		for (auto &child_id : children) {
-			intersection = intersect(ray, child_id, min_distance);
+			//if (debug) {
+			//	std::cout << "go to child " << child_id << std::endl;
+			//}
+			auto intersection = intersect(ray, child_id, min_distance, debug);
 			if (intersection.has_value() && intersection->distance < min_distance) {
 				min_distance = intersection->distance;
 				result = intersection;
 			}
+			//if (debug) {
+			//	std::cout << "min_distance = " << min_distance << std::endl;
+			//}
 		}
 	} else {
+		//if (debug) {
+		//	std::cout << "iterate over primitives of " << current_id << std::endl;
+		//}
 		for (int i = 0; i < current.primitive_count; i++) {
 			auto &primitive = primitives[current.first_primitive_id + i];
-			intersection = primitive->intersect(ray);
+			auto intersection = primitive->intersect(ray);
 			if (intersection.has_value() && intersection->distance < min_distance) {
 				min_distance = intersection->distance;
 				result = intersection;
 			}
+			//if (debug) {
+			//	std::cout << "min_distance = " << min_distance << std::endl;
+			//}
 		}
 	}
+	//if (debug) {
+	//	std::cout << "exit from " << current_id << std::endl;
+	//}
+	//if (result.has_value() && std::abs(min_distance - result.value().distance) > EPS7)
+	//	throw std::logic_error("fail!");
 	return result;
 }

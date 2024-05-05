@@ -16,7 +16,7 @@ struct AABB {
 
 	void extend(AABB aabb);
 
-	std::optional<Intersection> intersect(Ray ray) const;
+	std::optional<IntersectionSmall> intersect(Ray ray) const;
 
 	glm::vec3 aabb_min = glm::vec3(INF, INF, INF);
 	glm::vec3 aabb_max = glm::vec3(-INF, -INF, -INF);

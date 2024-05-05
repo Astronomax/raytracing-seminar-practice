@@ -1,8 +1,8 @@
 #include <Random.hpp>
 #include <utility>
 
-Random::Random()
-	: rnd(std::chrono::steady_clock::now().time_since_epoch().count()),
+Random::Random(int seed)
+	: rnd(seed),
 	uniform_(0.f, 1.f), normal_(0.f, 1.f) {}
 
 float
@@ -24,6 +24,8 @@ void
 Distribution::init_box(const Primitive* box)
 {
 	primitive_ = box;
+	auto &s = primitive_->primitive_specific[0];
+	area_ = 8 * (s.y * s.z + s.x * s.z + s.x * s.y);
 }
 
 void
@@ -51,9 +53,9 @@ Distribution::init_mixed_on_primitives(const std::vector<Distribution> &distribu
 	primitives.reserve(distributions.size());
 	for(auto &distribution : distributions)
 		primitives.push_back(distribution.primitive_);
-	bvh = BVH(primitives);
+	bvh_ = BVH(primitives);
 	distributions_.reserve(distributions.size());
-	for (auto &primitive : bvh.primitives) {
+	for (auto &primitive : bvh_.primitives) {
 		switch (primitive->type) {
 			case (PrimitiveType::BOX): {
 				Distribution distribution(DistributionType::BOX);
@@ -82,7 +84,8 @@ Distribution::init_mixed_on_primitives(const std::vector<Distribution> &distribu
 glm::vec3
 Distribution::sample_cosine(Random &rnd_, glm::vec3 n_x) const
 {
-	auto w = glm::normalize(glm::vec3(rnd_.normal(), rnd_.normal(), rnd_.normal()));
+	float x_ = rnd_.normal(), y_ = rnd_.normal(), z_ = rnd_.normal();
+	auto w = glm::normalize(glm::vec3(x_, y_, z_));
 	w = w + n_x;
 	auto len = glm::length(w);
 	if (std::isnan(len) || len <= EPS5 || glm::dot(w, n_x) <= EPS5)
@@ -117,7 +120,8 @@ Distribution::sample_ellipsoid(Random &rnd_, glm::vec3 x) const
 {
 	auto r = primitive_->primitive_specific[0];
 	while (true) {
-		auto y = r * glm::normalize(glm::vec3(rnd_.normal(), rnd_.normal(), rnd_.normal()));
+		float x_ = rnd_.normal(), y_ = rnd_.normal(), z_ = rnd_.normal();
+		auto y = r * glm::normalize(glm::vec3(x_, y_, z_));
 		y = rotate(y, conjugate(primitive_->rotation)) + primitive_->position;
 		auto w = glm::normalize(y - x);
 		if (primitive_->intersect(Ray{w, x}).has_value())
@@ -128,16 +132,27 @@ Distribution::sample_ellipsoid(Random &rnd_, glm::vec3 x) const
 glm::vec3
 Distribution::sample_triangle(Random &rnd_, glm::vec3 x) const
 {
-	const auto &a = primitive_->primitive_specific[0];
-	const auto &b = primitive_->primitive_specific[1] - a;
-	const auto &c = primitive_->primitive_specific[2] - a;
-	float u = rnd_.uniform(), v = rnd_.uniform();
+	//std::cout << "sample_triangle: " << x.x << " " << x.y << " " << x.z << std::endl;
+	const auto &a = primitive_->primitive_specific[2];
+	const auto &b = primitive_->primitive_specific[0] - a;
+	const auto &c = primitive_->primitive_specific[1] - a;
+	float u = rnd_.uniform();
+	float v = rnd_.uniform();
+	//std::cout << u << " " << v << std::endl;
 	if (u + v > 1.f) {
 		u = 1.f - u;
 		v = 1.f - v;
 	}
+	//std::cout << u << " " << v << std::endl;
+	auto q = a + u * b + v * c;
+	//std::cout << a.x << " " << a.y << " " << a.z << std::endl;
+	//std::cout << b.x << " " << b.y << " " << b.z << std::endl;
+	//std::cout << c.x << " " << c.y << " " << c.z << std::endl;
+	//std::cout << q.x << " " << q.y << " " << q.z << std::endl;
 	auto y = primitive_->position + rotate(a + u * b + v * c, conjugate(primitive_->rotation));
 	auto w = glm::normalize(y - x);
+	//std::cout << w.x << " " << w.y << " " << w.x << std::endl;
+	//exit(0);
 	return w;
 }
 
@@ -145,7 +160,7 @@ glm::vec3
 Distribution::sample_mixed(Random &rnd_, glm::vec3 x, glm::vec3 n_x) const
 {
 	auto i = (int)(rnd_.uniform(0, 1.f - EPS5) * (float)distributions_.size());
-	i = std::max(0, std::min((int)distributions_.size() - 1, i));
+	//i = std::max(0, std::min((int)distributions_.size() - 1, i));
 	return distributions_[i].sample(rnd_, x, n_x);
 }
 
@@ -179,14 +194,14 @@ Distribution::sample(Random &rnd_, glm::vec3 x, glm::vec3 n_x) const
 float
 Distribution::pdf1_box(glm::vec3 x, glm::vec3 y, glm::vec3 n_y) const
 {
-	auto &s = primitive_->primitive_specific[0];
-	auto area = 8 * (s.y * s.z + s.x * s.z + s.x * s.y);
+	//auto &s = primitive_->primitive_specific[0];
+	//auto area_ = 8 * (s.y * s.z + s.x * s.z + s.x * s.y);
 	auto w = y - x;
 	auto t = glm::length(x - y);
 	w = glm::normalize(w);
 	if (std::isnan(glm::length(w)))
 		return 0.f;
-	return powf(t, 2.f) / (area * std::abs(glm::dot(w, n_y)) + EPS7);
+	return powf(t, 2.f) / (area_ * std::abs(glm::dot(w, n_y)) + EPS7);
 }
 
 float
@@ -206,14 +221,21 @@ Distribution::pdf1_ellipsoid(glm::vec3 x, glm::vec3 y, glm::vec3 n_y) const
 float
 Distribution::pdf1_triangle(glm::vec3 x, glm::vec3 y, glm::vec3 n_y) const
 {
-	const auto &a = primitive_->primitive_specific[0];
-	const auto &b = primitive_->primitive_specific[1] - a;
-	const auto &c = primitive_->primitive_specific[2] - a;
+	//std::cout << "pdf1_triangle: " << y.x << " " << y.y << " " << y.z << std::endl;
+	const auto &a = primitive_->primitive_specific[2];
+	const auto &b = primitive_->primitive_specific[0] - a;
+	const auto &c = primitive_->primitive_specific[1] - a;
 	const auto normal = glm::cross(b, c);
 	float p = 1.f / (0.5f * glm::length(normal));
+	//std::cout << p << std::endl;
 	auto w = y - x;
 	auto t = glm::length(w);
-	return p * powf(t, 2.f) / (std::abs(glm::dot(w, n_y)) + EPS5);
+	w = glm::normalize(w);
+	//std::cout << powf(t, 2.f) << std::endl;
+	float res = p * powf(t, 2.f) / (std::abs(glm::dot(w, n_y)));
+	//std::cout << res << std::endl;
+	//exit(0);
+	return res;
 }
 
 float
@@ -248,7 +270,7 @@ float
 Distribution::pdf_sum_bvh(uint32_t current_id, glm::vec3 x, glm::vec3 n_x, glm::vec3 w) const
 {
 	Ray ray = {w, x};
-	const Node &current = bvh.nodes[current_id];
+	const Node &current = bvh_.nodes[current_id];
 	auto intersection = current.aabb.intersect(ray);
 	if (!intersection.has_value())
 		return 0.f;
@@ -265,7 +287,7 @@ Distribution::pdf_sum_bvh(uint32_t current_id, glm::vec3 x, glm::vec3 n_x, glm::
 float
 Distribution::pdf_mixed_on_primitives(glm::vec3 x, glm::vec3 n_x, glm::vec3 w) const
 {
-	return pdf_sum_bvh(bvh.root, x, n_x, w) / (float)distributions_.size();
+	return pdf_sum_bvh(bvh_.root, x, n_x, w) / (float)distributions_.size();
 }
 
 float

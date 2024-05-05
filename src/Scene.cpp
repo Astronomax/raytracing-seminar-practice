@@ -56,7 +56,7 @@ Scene::init() {
 	for(auto &primitive : primitives)
 		primitives_.push_back(&primitive);
 	bvh = BVH(primitives_);
-	//for(auto &node : bvh.nodes)
+	//for(auto &node : bvh_.nodes)
 	//	std::cout << node.aabb.aabb_min.x << " "
 	//		<< node.aabb.aabb_min.y << " "
 	//		<< node.aabb.aabb_min.z << " "

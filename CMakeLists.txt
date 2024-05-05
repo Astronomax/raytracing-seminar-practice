@@ -24,6 +24,6 @@ add_executable(${TARGET_NAME}
         src/Scene.cpp
         include/utils.hpp
 )
-
+#target_compile_options(${TARGET_NAME} PUBLIC -O3 -ffast-math)
 add_subdirectory(glm)
 target_link_libraries(${TARGET_NAME} glm::glm OpenMP::OpenMP_CXX)

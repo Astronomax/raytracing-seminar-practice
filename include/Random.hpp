@@ -13,7 +13,7 @@
 #include <random>
 
 struct Random {
-	Random();
+	Random(int seed);
 
 	float uniform(float l = 0.f, float r = 1.f);
 	float normal(float mu = 0.f, float sigma = 1.f);
@@ -83,7 +83,8 @@ struct Distribution {
 	DistributionType type_;
 	const Primitive *primitive_;
 	std::vector<Distribution> distributions_;
-	BVH bvh;
+	float area_;
+	BVH bvh_;
 };
 
 #endif //RAYTRACING_RANDOM_HPP

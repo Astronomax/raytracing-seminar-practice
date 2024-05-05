@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <cmath>
 
-Ray
+inline Ray
 to_local(Ray ray, const Primitive &primitive)
 {
 	return {
@@ -17,7 +17,7 @@ to_local(Ray ray, const Primitive &primitive)
 	};
 }
 
-bool
+inline bool
 get_square_equation_roots(float a, float b, float c, float &t1, float &t2)
 {
 	auto d = b * b - 4 * a * c;
@@ -30,7 +30,7 @@ get_square_equation_roots(float a, float b, float c, float &t1, float &t2)
 	return true;
 }
 
-bool
+inline bool
 min_geq_zero(float t1, float t2, float &t)
 {
 	assert(!std::isnan(t1));
@@ -88,10 +88,10 @@ Primitive::intersect_ignore_transformation_plane(Ray ray) const
 	return intersection;
 }
 
-std::optional<Intersection>
-Primitive::intersect_ignore_transformation_box(Ray ray) const
+std::optional<IntersectionSmall>
+Primitive::intersect_ignore_transformation_box_small(glm::vec3 diagonal, Ray ray)
 {
-	auto &diagonal = primitive_specific[0];
+	//auto &diagonal = primitive_specific[0];
 	auto v1 = (diagonal - ray.origin) / ray.direction;
 	auto v2 = (-diagonal - ray.origin) / ray.direction;
 	if (v1.x > v2.x) std::swap(v1.x, v2.x);
@@ -106,9 +106,25 @@ Primitive::intersect_ignore_transformation_box(Ray ray) const
 	if (!min_geq_zero(t1, t2, t))
 		return std::nullopt;
 
-	Intersection intersection{};
+	IntersectionSmall intersection{};
 	intersection.distance = t;
-	intersection.point = walk_along(ray, t);
+	intersection.inside = (t1 < 0.f);
+	return intersection;
+}
+
+std::optional<Intersection>
+Primitive::intersect_ignore_transformation_box(Ray ray) const
+{
+	auto &diagonal = primitive_specific[0];
+
+	auto small = intersect_ignore_transformation_box_small(diagonal, ray);
+	if (!small.has_value())
+		return std::nullopt;
+	Intersection intersection{};
+	intersection.distance = small.value().distance;
+	intersection.inside = small.value().inside;
+
+	intersection.point = walk_along(ray, intersection.distance);
 	auto normal = intersection.point / diagonal;
 	auto max_component = std::max({std::abs(normal.x), std::abs(normal.y), std::abs(normal.z)});
 	if (std::abs(std::abs(normal.x) - max_component) > EPS5)
@@ -117,7 +133,6 @@ Primitive::intersect_ignore_transformation_box(Ray ray) const
 		normal.y = 0.f;
 	if (std::abs(std::abs(normal.z) - max_component) > EPS5)
 		normal.z = 0.f;
-	intersection.inside = (t1 < 0.f);
 	intersection.obstacle = this;
 	if (intersection.inside)
 		normal *= -1.f;
@@ -132,10 +147,12 @@ Primitive::intersect_ignore_transformation_triangle(Ray ray) const
 	const auto &b = primitive_specific[1] - a;
 	const auto &c = primitive_specific[2] - a;
 	const auto normal = glm::cross(b, c);
-	auto plane = std::make_shared<Primitive>();
-	plane->type = PrimitiveType::PLANE;
-	plane->primitive_specific[0] = normal;
-	auto intersection = plane->intersect({ray.direction, ray.origin - a});
+	Primitive plane;
+	plane.type = PrimitiveType::PLANE;
+	plane.primitive_specific[0] = normal;
+	auto intersection = plane.intersect_ignore_transformation_plane(
+		{ray.direction, ray.origin - a});
+	intersection->point = walk_along(ray, intersection->distance);
 	if (!intersection.has_value())
 		return std::nullopt;
 	auto p = intersection->point;
