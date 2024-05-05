@@ -184,7 +184,7 @@ BVH::intersect(Ray ray, int current_id, float min_distance, bool debug) const
 		//	std::cout << "iterate over primitives of " << current_id << std::endl;
 		//}
 		for (int i = 0; i < current.primitive_count; i++) {
-			auto &primitive = primitives[current.first_primitive_id + i];
+			const auto &primitive = primitives[current.first_primitive_id + i];
 			auto intersection = primitive->intersect(ray);
 			if (intersection.has_value() && intersection->distance < min_distance) {
 				min_distance = intersection->distance;

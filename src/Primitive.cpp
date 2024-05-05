@@ -9,7 +9,7 @@
 #include <cmath>
 
 inline Ray
-to_local(Ray ray, const Primitive &primitive)
+to_local(const Ray &ray, const Primitive &primitive)
 {
 	return {
 		rotate(ray.direction, primitive.rotation),
@@ -17,7 +17,7 @@ to_local(Ray ray, const Primitive &primitive)
 	};
 }
 
-inline bool
+bool
 get_square_equation_roots(float a, float b, float c, float &t1, float &t2)
 {
 	auto d = b * b - 4 * a * c;
@@ -25,22 +25,22 @@ get_square_equation_roots(float a, float b, float c, float &t1, float &t2)
 		return false;
 	t1 = (-b - sqrtf(d)) / (2.f * a);
 	t2 = (-b + sqrtf(d)) / (2.f * a);
-	assert(!std::isnan(t1));
-	assert(!std::isnan(t2));
+	//assert(!std::isnan(t1));
+	//assert(!std::isnan(t2));
 	return true;
 }
 
 inline bool
 min_geq_zero(float t1, float t2, float &t)
 {
-	assert(!std::isnan(t1));
-	assert(!std::isnan(t2));
+	//assert(!std::isnan(t1));
+	//assert(!std::isnan(t2));
 	t = (t1 >= 0.f) ? t1 : t2;
 	return t >= 0.f;
 }
 
 std::optional<Intersection>
-Primitive::intersect_ignore_transformation_ellipsoid(Ray ray) const
+Primitive::intersect_ignore_transformation_ellipsoid(const Ray &ray) const
 {
 	auto divided_ray = ray;
 	auto &radius = primitive_specific[0];
@@ -69,7 +69,7 @@ Primitive::intersect_ignore_transformation_ellipsoid(Ray ray) const
 }
 
 std::optional<Intersection>
-Primitive::intersect_ignore_transformation_plane(Ray ray) const
+Primitive::intersect_ignore_transformation_plane(const Ray &ray) const
 {
 	auto &normal = primitive_specific[0];
 	auto t = -glm::dot(ray.origin, normal)
@@ -89,7 +89,7 @@ Primitive::intersect_ignore_transformation_plane(Ray ray) const
 }
 
 std::optional<IntersectionSmall>
-Primitive::intersect_ignore_transformation_box_small(glm::vec3 diagonal, Ray ray)
+Primitive::intersect_ignore_transformation_box_small(const glm::vec3 &diagonal, const Ray &ray)
 {
 	//auto &diagonal = primitive_specific[0];
 	auto v1 = (diagonal - ray.origin) / ray.direction;
@@ -106,14 +106,11 @@ Primitive::intersect_ignore_transformation_box_small(glm::vec3 diagonal, Ray ray
 	if (!min_geq_zero(t1, t2, t))
 		return std::nullopt;
 
-	IntersectionSmall intersection{};
-	intersection.distance = t;
-	intersection.inside = (t1 < 0.f);
-	return intersection;
+	return {IntersectionSmall{t, (t1 < 0.f)}};
 }
 
 std::optional<Intersection>
-Primitive::intersect_ignore_transformation_box(Ray ray) const
+Primitive::intersect_ignore_transformation_box(const Ray &ray) const
 {
 	auto &diagonal = primitive_specific[0];
 
@@ -141,7 +138,7 @@ Primitive::intersect_ignore_transformation_box(Ray ray) const
 }
 
 std::optional<Intersection>
-Primitive::intersect_ignore_transformation_triangle(Ray ray) const
+Primitive::intersect_ignore_transformation_triangle(const Ray &ray) const
 {
 	const auto &a = primitive_specific[0];
 	const auto &b = primitive_specific[1] - a;
@@ -168,7 +165,7 @@ Primitive::intersect_ignore_transformation_triangle(Ray ray) const
 }
 
 std::optional<Intersection>
-Primitive::intersect(Ray ray) const
+Primitive::intersect(const Ray &ray) const
 {
 	auto in_local = to_local(ray, *this);
 

@@ -111,18 +111,20 @@ raytrace(const Scene &scene, Random &rnd, Ray ray, int depth)
 	if (depth >= scene.ray_depth)
 		return black;
 
-	glm::vec3 point, normal;
-	bool inside;
-	const Primitive *primitive;
-	{
-		Intersection intersection{};
-		if (!intersect(scene, ray, intersection))
-			return scene.bg_color;
-		point = intersection.point;
-		normal = intersection.normal;
-		inside = intersection.inside;
-		primitive = intersection.obstacle;
-	}
+	//glm::vec3 point, normal;
+	//bool inside;
+	//const Primitive *primitive;
+	//{
+	Intersection intersection{};
+	if (!intersect(scene, ray, intersection))
+		return scene.bg_color;
+	const auto &[distance, point, normal,
+		     inside, primitive] = intersection;
+		//point = intersection.point;
+		//normal = intersection.normal;
+		//inside = intersection.inside;
+		//primitive = intersection.obstacle;
+	//}
 
 	switch (primitive->material) {
 		case (Material::DIFFUSE):
@@ -142,7 +144,7 @@ render(Scene &scene)
 	const auto &camera = scene.camera;
 	Image image(camera.height, camera.width);
 
-	#pragma omp parallel for schedule(dynamic, 8)
+	#pragma omp parallel for schedule(dynamic,8)
 	for (int pixel = 0; pixel < camera.height * camera.width; pixel++) {
 		//std::cout << pixel << std::endl;
 		Random rnd(pixel);

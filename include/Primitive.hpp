@@ -41,15 +41,14 @@ struct Intersection {
 };
 
 struct Primitive {
-	std::optional<Intersection> intersect(Ray ray) const;
+	std::optional<Intersection> intersect(const Ray &ray) const;
 
-	static std::optional<IntersectionSmall> intersect_ignore_transformation_box_small(glm::vec3 diagonal, Ray ray);
-
+	static std::optional<IntersectionSmall> intersect_ignore_transformation_box_small(const glm::vec3 &diagonal, const Ray &ray);
 private:
-	std::optional<Intersection> intersect_ignore_transformation_ellipsoid(Ray ray) const;
-	std::optional<Intersection> intersect_ignore_transformation_plane(Ray ray) const;
-	std::optional<Intersection> intersect_ignore_transformation_box(Ray ray) const;
-	std::optional<Intersection> intersect_ignore_transformation_triangle(Ray ray) const;
+	std::optional<Intersection> intersect_ignore_transformation_ellipsoid(const Ray &ray) const;
+	std::optional<Intersection> intersect_ignore_transformation_plane(const Ray &ray) const;
+	std::optional<Intersection> intersect_ignore_transformation_box(const Ray &ray) const;
+	std::optional<Intersection> intersect_ignore_transformation_triangle(const Ray &ray) const;
 public:
 	Color color = black;
 	Material material = Material::DIFFUSE;

@@ -25,7 +25,7 @@ Distribution::init_box(const Primitive* box)
 {
 	primitive_ = box;
 	auto &s = primitive_->primitive_specific[0];
-	area_ = 8 * (s.y * s.z + s.x * s.z + s.x * s.y);
+	distrib_specific = 8 * (s.y * s.z + s.x * s.z + s.x * s.y);
 }
 
 void
@@ -38,6 +38,11 @@ void
 Distribution::init_triangle(const Primitive* triangle)
 {
 	primitive_ = triangle;
+	const auto &a = primitive_->primitive_specific[2];
+	const auto &b = primitive_->primitive_specific[0] - a;
+	const auto &c = primitive_->primitive_specific[1] - a;
+	const auto normal = glm::cross(b, c);
+	distrib_specific = 1.f / (0.5f * glm::length(normal));
 }
 
 void
@@ -144,7 +149,7 @@ Distribution::sample_triangle(Random &rnd_, glm::vec3 x) const
 		v = 1.f - v;
 	}
 	//std::cout << u << " " << v << std::endl;
-	auto q = a + u * b + v * c;
+	//auto q = a + u * b + v * c;
 	//std::cout << a.x << " " << a.y << " " << a.z << std::endl;
 	//std::cout << b.x << " " << b.y << " " << b.z << std::endl;
 	//std::cout << c.x << " " << c.y << " " << c.z << std::endl;
@@ -197,11 +202,11 @@ Distribution::pdf1_box(glm::vec3 x, glm::vec3 y, glm::vec3 n_y) const
 	//auto &s = primitive_->primitive_specific[0];
 	//auto area_ = 8 * (s.y * s.z + s.x * s.z + s.x * s.y);
 	auto w = y - x;
-	auto t = glm::length(x - y);
+	auto t = glm::dot(w, w);
 	w = glm::normalize(w);
-	if (std::isnan(glm::length(w)))
+	if (std::isnan(t))
 		return 0.f;
-	return powf(t, 2.f) / (area_ * std::abs(glm::dot(w, n_y)) + EPS7);
+	return t / (distrib_specific * std::abs(glm::dot(w, n_y)));
 }
 
 float
@@ -211,28 +216,30 @@ Distribution::pdf1_ellipsoid(glm::vec3 x, glm::vec3 y, glm::vec3 n_y) const
 	auto n = rotate(y - primitive_->position, primitive_->rotation) / r;
 	auto p = 1.f / (4.f * PI * glm::length(glm::vec3(n.x * r.y * r.z, r.x * n.y * r.z, r.x * r.y * n.z)));
 	auto w = y - x;
-	auto t = glm::length(w);
-	if (std::abs(t) < EPS4)
+	auto t = glm::dot(w, w);
+	if (std::isnan(t))
 		return 0.f;
 	w = glm::normalize(w);
-	return p * powf(t, 2.f) / (std::abs(glm::dot(w, n_y)) + EPS5);
+	return p * t / (std::abs(glm::dot(w, n_y)));
 }
 
 float
 Distribution::pdf1_triangle(glm::vec3 x, glm::vec3 y, glm::vec3 n_y) const
 {
 	//std::cout << "pdf1_triangle: " << y.x << " " << y.y << " " << y.z << std::endl;
-	const auto &a = primitive_->primitive_specific[2];
-	const auto &b = primitive_->primitive_specific[0] - a;
-	const auto &c = primitive_->primitive_specific[1] - a;
-	const auto normal = glm::cross(b, c);
-	float p = 1.f / (0.5f * glm::length(normal));
+	//const auto &a = primitive_->primitive_specific[2];
+	//const auto &b = primitive_->primitive_specific[0] - a;
+	//const auto &c = primitive_->primitive_specific[1] - a;
+	//const auto normal = glm::cross(b, c);
+	//float p = 1.f / (0.5f * glm::length(normal));
 	//std::cout << p << std::endl;
 	auto w = y - x;
-	auto t = glm::length(w);
+	auto t = glm::dot(w, w);
 	w = glm::normalize(w);
+	if (std::isnan(t))
+		return 0.f;
 	//std::cout << powf(t, 2.f) << std::endl;
-	float res = p * powf(t, 2.f) / (std::abs(glm::dot(w, n_y)));
+	float res = distrib_specific * t / (std::abs(glm::dot(w, n_y)));
 	//std::cout << res << std::endl;
 	//exit(0);
 	return res;
@@ -304,8 +311,8 @@ Distribution::pdf(glm::vec3 x, glm::vec3 n_x, glm::vec3 w) const
 				auto intersection = primitive_->intersect({w, origin});
 				if (!intersection.has_value())
 					return p;
-				auto y = intersection.value().point;
-				auto n_y = intersection.value().normal;
+				const auto &y = intersection.value().point;
+				const auto &n_y = intersection.value().normal;
 				p += pdf1_primitive(x, y, n_y);
 				origin = intersection->point + w * EPS4;
 			}

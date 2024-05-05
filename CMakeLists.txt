@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(TARGET_NAME "${PROJECT_NAME}")
 set(PROJECT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
 
 find_package(OpenMP)
 
@@ -24,6 +25,6 @@ add_executable(${TARGET_NAME}
         src/Scene.cpp
         include/utils.hpp
 )
-#target_compile_options(${TARGET_NAME} PUBLIC -O3 -ffast-math)
+#target_compile_options(${TARGET_NAME} PUBLIC -O3)
 add_subdirectory(glm)
 target_link_libraries(${TARGET_NAME} glm::glm OpenMP::OpenMP_CXX)

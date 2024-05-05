@@ -83,7 +83,7 @@ struct Distribution {
 	DistributionType type_;
 	const Primitive *primitive_;
 	std::vector<Distribution> distributions_;
-	float area_;
+	float distrib_specific;
 	BVH bvh_;
 };
 
