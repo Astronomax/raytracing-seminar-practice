@@ -40,12 +40,12 @@ intersect(const Scene &scene, Ray ray, Intersection &intersection)
 }
 
 Color
-raytrace(const Scene &scene, Random &rnd, Ray ray, int depth = 0);
+raytrace(const Scene &scene, Random &rnd, Ray ray, int depth = 0, int start = 0);
 
 Color
 diffuse_raytrace(const Scene &scene, Random &rnd,
 		 const Primitive *primitive, glm::vec3 point,
-		 glm::vec3 normal, Ray ray, int depth)
+		 glm::vec3 normal, Ray ray, int depth, int start)
 {
 	//std::cout << "diffuse_raytrace" << std::endl;
 	auto w = scene.distribution.sample(rnd, point + EPS5 * normal, normal);
@@ -58,24 +58,24 @@ diffuse_raytrace(const Scene &scene, Random &rnd,
 		return primitive->emission;
 	auto p = scene.distribution.pdf(point + EPS5 * normal, normal, w);
 	Ray wRay = {w, point + w * EPS5};
-	return primitive->emission + 1.f / (PI * p) * w_normal_dot * raytrace(scene, rnd, wRay, depth + 1) * primitive->color;
+	return primitive->emission + 1.f / (PI * p) * w_normal_dot * raytrace(scene, rnd, wRay, depth + 1, start) * primitive->color;
 }
 
 Color
 metallic_raytrace(const Scene &scene, Random &rnd,
 		  const Primitive *primitive, glm::vec3 point,
-		  glm::vec3 normal, Ray ray, int depth)
+		  glm::vec3 normal, Ray ray, int depth, int start)
 {
 	//std::cout << "metallic_raytrace" << std::endl;
 	auto reflect_dir = ray.direction - 2.f * normal * glm::dot(normal, ray.direction);
 	Ray reflect_ray = {reflect_dir, point + reflect_dir * EPS5};
-	return primitive->emission + raytrace(scene, rnd, reflect_ray, depth + 1) * primitive->color;
+	return primitive->emission + raytrace(scene, rnd, reflect_ray, depth + 1, start) * primitive->color;
 }
 
 Color
 dielectric_raytrace(const Scene &scene, Random &rnd,
 		    const Primitive *primitive, glm::vec3 point,
-		    glm::vec3 normal, Ray ray, bool inside, int depth)
+		    glm::vec3 normal, Ray ray, bool inside, int depth, int start)
 {
 	//std::cout << "dielectric_raytrace" << std::endl;
 	auto normal_ray_dot = glm::dot(normal, ray.direction);
@@ -92,21 +92,23 @@ dielectric_raytrace(const Scene &scene, Random &rnd,
 	if (std::abs(sinTheta2) > 1.f || u < r) {
 		auto reflect_dir = ray.direction - 2.f * normal_ray_dot * normal;
 		Ray reflect_ray = {reflect_dir, point + reflect_dir * EPS5};
-		auto reflected = raytrace(scene, rnd, reflect_ray, depth + 1);
+		auto reflected = raytrace(scene, rnd, reflect_ray, depth + 1, start);
 		return primitive->emission + reflected;
 	}
 	auto cosTheta2 = sqrtf(1.f - powf(sinTheta2, 2.f));
 	auto refract_dir = eta1 / eta2 * (ray.direction) + (eta1 / eta2 * cosTheta1 - cosTheta2) * normal;
 	Ray refract_ray = {refract_dir, point + refract_dir * EPS5};
-	auto refracted = raytrace(scene, rnd, refract_ray, depth + 1);
+	auto refracted = raytrace(scene, rnd, refract_ray, depth + 1, start);
 	if (!inside)
 		refracted *= primitive->color;
 	return primitive->emission + refracted;
 }
 
 Color
-raytrace(const Scene &scene, Random &rnd, Ray ray, int depth)
+raytrace(const Scene &scene, Random &rnd, Ray ray, int depth, int start)
 {
+	//if (((double)clock() - (double)start) / (double)CLOCKS_PER_SEC > 0.5f)
+	//	return black;
 	//std::cout << depth << std::endl;
 	if (depth >= scene.ray_depth)
 		return black;
@@ -128,11 +130,11 @@ raytrace(const Scene &scene, Random &rnd, Ray ray, int depth)
 
 	switch (primitive->material) {
 		case (Material::DIFFUSE):
-			return diffuse_raytrace(scene, rnd, primitive, point, normal, ray, depth);
+			return diffuse_raytrace(scene, rnd, primitive, point, normal, ray, depth, start);
 		case (Material::METALLIC):
-			return metallic_raytrace(scene, rnd, primitive, point, normal, ray, depth);
+			return metallic_raytrace(scene, rnd, primitive, point, normal, ray, depth, start);
 		case (Material::DIELECTRIC):
-			return dielectric_raytrace(scene, rnd, primitive, point, normal, ray, inside, depth);
+			return dielectric_raytrace(scene, rnd, primitive, point, normal, ray, inside, depth, start);
 		default:
 			unreachable();
 	}
@@ -144,6 +146,7 @@ render(Scene &scene)
 	const auto &camera = scene.camera;
 	Image image(camera.height, camera.width);
 
+	int start = clock();
 	#pragma omp parallel for schedule(dynamic,8)
 	for (int pixel = 0; pixel < camera.height * camera.width; pixel++) {
 		//std::cout << pixel << std::endl;
@@ -159,7 +162,7 @@ render(Scene &scene)
 			//std::cout << ray.origin.x << " " << ray.origin.y << " " << ray.origin.z << std::endl;
 			//std::cout << ray.direction.x << " " << ray.direction.y << " " << ray.direction.z << std::endl;
 			//exit(0);
-			color += raytrace(scene, rnd, ray);
+			color += raytrace(scene, rnd, ray, 0, start);
 		}
 		color /= (float) scene.samples;
 		image.set_pixel(i, j, gamma_corrected(aces_tonemap(color)));

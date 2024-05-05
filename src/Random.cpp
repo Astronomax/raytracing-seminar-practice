@@ -103,6 +103,7 @@ Distribution::sample_box(Random &rnd_, glm::vec3 x) const
 {
 	auto &s = primitive_->primitive_specific[0];
 	glm::vec3 weight = {s.y * s.z, s.x * s.z, s.x * s.y};
+	int iter = 0;
 	while (true) {
 		float u = rnd_.uniform(0.f, weight.x + weight.y + weight.z);
 		float sign = (rnd_.uniform() > 0.5f) ? 1.f : -1.f;
@@ -113,6 +114,28 @@ Distribution::sample_box(Random &rnd_, glm::vec3 x) const
 			y = glm::vec3(rnd_.uniform(-s.x, s.x), sign * s.y, rnd_.uniform(-s.z, s.z));
 		else
 			y = glm::vec3(rnd_.uniform(-s.x, s.x), rnd_.uniform(-s.y, s.y), sign * s.z);
+		//if (!(-s.x <= y.x && y.x <= s.x)) throw std::logic_error("");
+		//if (!(-s.y <= y.y && y.y <= s.y)) throw std::logic_error("");
+		//if (!(-s.z <= y.z && y.z <= s.z)) throw std::logic_error("");
+		//if(!(std::abs(-s.x - y.x) < EPS5 || std::abs(s.x - y.x) < EPS5
+		//	|| std::abs(-s.y - y.y) < EPS5 || std::abs(s.y - y.y) < EPS5
+		//	|| std::abs(-s.z - y.z) < EPS5 || std::abs(s.z - y.z) < EPS5))
+		//	throw std::logic_error("");
+
+		//throw std::logic_error("");
+
+		//if(++iter % 200 == 0) {
+		//	std::cout << s.x << " " << s.y << " " << s.z << std::endl;
+		//	std::cout << y.x << " " << y.y << " " << y.z << std::endl;
+		//	std::cout << x.x << " " << x.y << " " << x.z << std::endl;
+		//	std::cout << primitive_->position.x << " " << primitive_->position.y << " " << primitive_->position.z << std::endl;
+		//	y = rotate(y, conjugate(primitive_->rotation)) + primitive_->position;
+		//	std::cout << y.x << " " << y.y << " " << y.z << std::endl;
+		//	auto w = glm::normalize(y - x);
+		//	if (primitive_->intersect(Ray{w, x}, true).has_value())
+		//		return w;
+		//	throw std::logic_error("");
+		//}
 		y = rotate(y, conjugate(primitive_->rotation)) + primitive_->position;
 		auto w = glm::normalize(y - x);
 		if (primitive_->intersect(Ray{w, x}).has_value())
@@ -124,7 +147,9 @@ glm::vec3
 Distribution::sample_ellipsoid(Random &rnd_, glm::vec3 x) const
 {
 	auto r = primitive_->primitive_specific[0];
+	int iter = 0;
 	while (true) {
+		if(++iter % 200 == 0) std::cout << "sample_ellipsoid" << std::endl;
 		float x_ = rnd_.normal(), y_ = rnd_.normal(), z_ = rnd_.normal();
 		auto y = r * glm::normalize(glm::vec3(x_, y_, z_));
 		y = rotate(y, conjugate(primitive_->rotation)) + primitive_->position;
@@ -204,9 +229,11 @@ Distribution::pdf1_box(glm::vec3 x, glm::vec3 y, glm::vec3 n_y) const
 	auto w = y - x;
 	auto t = glm::dot(w, w);
 	w = glm::normalize(w);
-	if (std::isnan(t))
+	if (std::isnan(t) || std::abs(t) < EPS5)
 		return 0.f;
-	return t / (distrib_specific * std::abs(glm::dot(w, n_y)));
+	float res = t / (distrib_specific * std::abs(glm::dot(w, n_y)));
+	//if(std::isnan(res)) throw std::logic_error("fail!");
+	return res;
 }
 
 float
@@ -217,10 +244,13 @@ Distribution::pdf1_ellipsoid(glm::vec3 x, glm::vec3 y, glm::vec3 n_y) const
 	auto p = 1.f / (4.f * PI * glm::length(glm::vec3(n.x * r.y * r.z, r.x * n.y * r.z, r.x * r.y * n.z)));
 	auto w = y - x;
 	auto t = glm::dot(w, w);
-	if (std::isnan(t))
+	if (std::isnan(t) || std::abs(t) < EPS5)
 		return 0.f;
 	w = glm::normalize(w);
-	return p * t / (std::abs(glm::dot(w, n_y)));
+	//if(std::isnan(p)) throw std::logic_error("fail!");
+	float res = p * t / (std::abs(glm::dot(w, n_y)));
+	//if(std::isnan(res)) throw std::logic_error("fail!");
+	return res;
 }
 
 float
@@ -236,10 +266,11 @@ Distribution::pdf1_triangle(glm::vec3 x, glm::vec3 y, glm::vec3 n_y) const
 	auto w = y - x;
 	auto t = glm::dot(w, w);
 	w = glm::normalize(w);
-	if (std::isnan(t))
+	if (std::isnan(t) || std::abs(t) < EPS5)
 		return 0.f;
 	//std::cout << powf(t, 2.f) << std::endl;
 	float res = distrib_specific * t / (std::abs(glm::dot(w, n_y)));
+	//if(std::isnan(res)) throw std::logic_error("fail!");
 	//std::cout << res << std::endl;
 	//exit(0);
 	return res;
@@ -248,7 +279,9 @@ Distribution::pdf1_triangle(glm::vec3 x, glm::vec3 y, glm::vec3 n_y) const
 float
 Distribution::pdf_cosine(glm::vec3 n_x, glm::vec3 w) const
 {
-	return std::max(0.f, glm::dot(w, n_x) / PI);
+	float res = std::max(0.f, glm::dot(w, n_x) / PI);
+	//if(std::isnan(res)) throw std::logic_error("fail!");
+	return res;
 }
 
 float
@@ -270,7 +303,9 @@ Distribution::pdf_mixed(glm::vec3 x, glm::vec3 n_x, glm::vec3 w) const
 	float p = 0;
 	for (const auto &distrib : distributions_)
 		p += distrib.pdf(x, n_x, w);
-	return p / (float)distributions_.size();
+	float res = p / (float)distributions_.size();
+	//if(std::isnan(res)) throw std::logic_error("fail!");
+	return res;
 }
 
 float
@@ -285,10 +320,13 @@ Distribution::pdf_sum_bvh(uint32_t current_id, glm::vec3 x, glm::vec3 n_x, glm::
 		float pdf_sum = 0;
 		for (int i = 0; i < current.primitive_count; i++)
 			pdf_sum += distributions_[current.first_primitive_id + i].pdf(x, n_x, w);
+		//if(std::isnan(pdf_sum)) throw std::logic_error("fail!");
 		return pdf_sum;
 	}
-	return pdf_sum_bvh(current.left_child, x, n_x, w) +
+	float res = pdf_sum_bvh(current.left_child, x, n_x, w) +
 		pdf_sum_bvh(current.right_child, x, n_x, w);
+	//if(std::isnan(res)) throw std::logic_error("fail!");
+	return res;
 }
 
 float

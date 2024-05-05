@@ -7,6 +7,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iostream>
+#include <iomanip>
 
 inline Ray
 to_local(const Ray &ray, const Primitive &primitive)
@@ -74,7 +76,7 @@ Primitive::intersect_ignore_transformation_plane(const Ray &ray) const
 	auto &normal = primitive_specific[0];
 	auto t = -glm::dot(ray.origin, normal)
 		 / glm::dot(ray.direction, normal);
-	if (t < 0.f)
+	if (t < 0.f || t > 1e4f)
 		return std::nullopt;
 
 	Intersection intersection{};
@@ -89,9 +91,13 @@ Primitive::intersect_ignore_transformation_plane(const Ray &ray) const
 }
 
 std::optional<IntersectionSmall>
-Primitive::intersect_ignore_transformation_box_small(const glm::vec3 &diagonal, const Ray &ray)
+Primitive::intersect_ignore_transformation_box_small(const glm::vec3 &diagonal, const Ray &ray, bool debug)
 {
 	//auto &diagonal = primitive_specific[0];
+	if(debug) std::cout << "1: " << (diagonal).x << " " << (diagonal).y << " " << (diagonal).z << std::endl;
+	if(debug) std::cout << "1: " << (ray.origin).x << " " << (ray.origin).y << " " << (ray.origin).z << std::endl;
+	if(debug) std::cout << "1: " << (diagonal - ray.origin).x << " " << (diagonal - ray.origin).y << " " << (diagonal - ray.origin).z << std::endl;
+	if(debug) std::cout << "2: " <<  ray.direction.x << " " << ray.direction.y << " " << ray.direction.z << std::endl;
 	auto v1 = (diagonal - ray.origin) / ray.direction;
 	auto v2 = (-diagonal - ray.origin) / ray.direction;
 	if (v1.x > v2.x) std::swap(v1.x, v2.x);
@@ -100,21 +106,24 @@ Primitive::intersect_ignore_transformation_box_small(const glm::vec3 &diagonal, 
 	auto t1 = std::max(v1.x, std::max(v1.y, v1.z));
 	auto t2 = std::min(v2.x, std::min(v2.y, v2.z));
 	float t;
+	if(debug)
+	std::cout << t1 << " " << t2 << std::endl;
 
-	if (t1 > t2)
+	if (t1 > t2 + EPS7) {
+		if(debug) std::cout << std::fixed << std::setprecision(10) << t1 << " > " << t2 << std::endl;
 		return std::nullopt;
+	}
 	if (!min_geq_zero(t1, t2, t))
 		return std::nullopt;
-
 	return {IntersectionSmall{t, (t1 < 0.f)}};
 }
 
 std::optional<Intersection>
-Primitive::intersect_ignore_transformation_box(const Ray &ray) const
+Primitive::intersect_ignore_transformation_box(const Ray &ray, bool debug) const
 {
 	auto &diagonal = primitive_specific[0];
 
-	auto small = intersect_ignore_transformation_box_small(diagonal, ray);
+	auto small = intersect_ignore_transformation_box_small(diagonal, ray, debug);
 	if (!small.has_value())
 		return std::nullopt;
 	Intersection intersection{};
@@ -165,7 +174,7 @@ Primitive::intersect_ignore_transformation_triangle(const Ray &ray) const
 }
 
 std::optional<Intersection>
-Primitive::intersect(const Ray &ray) const
+Primitive::intersect(const Ray &ray, bool debug) const
 {
 	auto in_local = to_local(ray, *this);
 
@@ -178,7 +187,7 @@ Primitive::intersect(const Ray &ray) const
 			intersection = intersect_ignore_transformation_plane(in_local);
 			break;
 		case (PrimitiveType::BOX):
-			intersection = intersect_ignore_transformation_box(in_local);
+			intersection = intersect_ignore_transformation_box(in_local, debug);
 			break;
 		case (PrimitiveType::TRIANGLE):
 			intersection = intersect_ignore_transformation_triangle(in_local);
