@@ -156,7 +156,7 @@ render(Scene &scene)
 	int start = clock();
 	#pragma omp parallel for schedule(dynamic,8)
 	for (int pixel = 0; pixel < camera.height * camera.width; pixel++) {
-		//std::cout << pixel << std::endl;
+		std::cout << pixel << std::endl;
 		Random rnd(pixel);
 		int i = pixel / camera.width;
 		int j = pixel % camera.width;

@@ -162,28 +162,34 @@ Distribution::sample_ellipsoid(Random &rnd_, glm::vec3 x) const
 glm::vec3
 Distribution::sample_triangle(Random &rnd_, glm::vec3 x) const
 {
-	//std::cout << "sample_triangle: " << x.x << " " << x.y << " " << x.z << std::endl;
-	const auto &a = primitive_->primitive_specific[2];
-	const auto &b = primitive_->primitive_specific[0] - a;
-	const auto &c = primitive_->primitive_specific[1] - a;
-	float u = rnd_.uniform();
-	float v = rnd_.uniform();
-	//std::cout << u << " " << v << std::endl;
-	if (u + v > 1.f) {
-		u = 1.f - u;
-		v = 1.f - v;
+	int iter = 0;
+	while (true) {
+		if(++iter % 200 == 0) std::cout << "sample_triangle" << std::endl;
+		//std::cout << "sample_triangle: " << x.x << " " << x.y << " " << x.z << std::endl;
+		const auto &a = primitive_->primitive_specific[2];
+		const auto &b = primitive_->primitive_specific[0] - a;
+		const auto &c = primitive_->primitive_specific[1] - a;
+		float u = rnd_.uniform();
+		float v = rnd_.uniform();
+		//std::cout << u << " " << v << std::endl;
+		if (u + v > 1.f) {
+			u = 1.f - u;
+			v = 1.f - v;
+		}
+		//std::cout << u << " " << v << std::endl;
+		//auto q = a + u * b + v * c;
+		//std::cout << a.x << " " << a.y << " " << a.z << std::endl;
+		//std::cout << b.x << " " << b.y << " " << b.z << std::endl;
+		//std::cout << c.x << " " << c.y << " " << c.z << std::endl;
+		//std::cout << q.x << " " << q.y << " " << q.z << std::endl;
+		auto y = primitive_->position + rotate(a + u * b + v * c, conjugate(primitive_->rotation));
+		auto w = glm::normalize(y - x);
+		//std::cout << w.x << " " << w.y << " " << w.x << std::endl;
+		//exit(0);
+		if (primitive_->intersect(Ray{w, x}).has_value())
+			return w;
+		return w;
 	}
-	//std::cout << u << " " << v << std::endl;
-	//auto q = a + u * b + v * c;
-	//std::cout << a.x << " " << a.y << " " << a.z << std::endl;
-	//std::cout << b.x << " " << b.y << " " << b.z << std::endl;
-	//std::cout << c.x << " " << c.y << " " << c.z << std::endl;
-	//std::cout << q.x << " " << q.y << " " << q.z << std::endl;
-	auto y = primitive_->position + rotate(a + u * b + v * c, conjugate(primitive_->rotation));
-	auto w = glm::normalize(y - x);
-	//std::cout << w.x << " " << w.y << " " << w.x << std::endl;
-	//exit(0);
-	return w;
 }
 
 glm::vec3
