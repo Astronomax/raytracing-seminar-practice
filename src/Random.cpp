@@ -230,7 +230,7 @@ Distribution::pdf1_box(glm::vec3 x, glm::vec3 y, glm::vec3 n_y) const
 	auto t = glm::dot(w, w);
 	w = glm::normalize(w);
 	if (std::isnan(t) || std::abs(t) < EPS5)
-		return 0.f;
+		return INF;
 	float res = t / (distrib_specific * std::abs(glm::dot(w, n_y)));
 	//if(std::isnan(res)) throw std::logic_error("fail!");
 	return res;
@@ -245,7 +245,7 @@ Distribution::pdf1_ellipsoid(glm::vec3 x, glm::vec3 y, glm::vec3 n_y) const
 	auto w = y - x;
 	auto t = glm::dot(w, w);
 	if (std::isnan(t) || std::abs(t) < EPS5)
-		return 0.f;
+		return INF;
 	w = glm::normalize(w);
 	//if(std::isnan(p)) throw std::logic_error("fail!");
 	float res = p * t / (std::abs(glm::dot(w, n_y)));
@@ -267,7 +267,7 @@ Distribution::pdf1_triangle(glm::vec3 x, glm::vec3 y, glm::vec3 n_y) const
 	auto t = glm::dot(w, w);
 	w = glm::normalize(w);
 	if (std::isnan(t) || std::abs(t) < EPS5)
-		return 0.f;
+		return INF;
 	//std::cout << powf(t, 2.f) << std::endl;
 	float res = distrib_specific * t / (std::abs(glm::dot(w, n_y)));
 	//if(std::isnan(res)) throw std::logic_error("fail!");
@@ -349,6 +349,8 @@ Distribution::pdf(glm::vec3 x, glm::vec3 n_x, glm::vec3 w) const
 				auto intersection = primitive_->intersect({w, origin});
 				if (!intersection.has_value())
 					return p;
+				if (intersection->distance < EPS5)
+					return INF;
 				const auto &y = intersection.value().point;
 				const auto &n_y = intersection.value().normal;
 				p += pdf1_primitive(x, y, n_y);
@@ -361,6 +363,8 @@ Distribution::pdf(glm::vec3 x, glm::vec3 n_x, glm::vec3 w) const
 			//assert(!intersection.has_value());
 			if (!intersection.has_value())
 				return 0.f;
+			if (intersection->distance < EPS5)
+				return INF;
 			auto y = intersection.value().point;
 			auto n_y = intersection.value().normal;
 			return pdf1_triangle(x, y, n_y);

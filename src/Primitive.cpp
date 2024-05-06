@@ -94,10 +94,10 @@ std::optional<IntersectionSmall>
 Primitive::intersect_ignore_transformation_box_small(const glm::vec3 &diagonal, const Ray &ray, bool debug)
 {
 	//auto &diagonal = primitive_specific[0];
-	if(debug) std::cout << "1: " << (diagonal).x << " " << (diagonal).y << " " << (diagonal).z << std::endl;
-	if(debug) std::cout << "1: " << (ray.origin).x << " " << (ray.origin).y << " " << (ray.origin).z << std::endl;
-	if(debug) std::cout << "1: " << (diagonal - ray.origin).x << " " << (diagonal - ray.origin).y << " " << (diagonal - ray.origin).z << std::endl;
-	if(debug) std::cout << "2: " <<  ray.direction.x << " " << ray.direction.y << " " << ray.direction.z << std::endl;
+	//if(debug) std::cout << "1: " << (diagonal).x << " " << (diagonal).y << " " << (diagonal).z << std::endl;
+	//if(debug) std::cout << "1: " << (ray.origin).x << " " << (ray.origin).y << " " << (ray.origin).z << std::endl;
+	//if(debug) std::cout << "1: " << (diagonal - ray.origin).x << " " << (diagonal - ray.origin).y << " " << (diagonal - ray.origin).z << std::endl;
+	//if(debug) std::cout << "2: " <<  ray.direction.x << " " << ray.direction.y << " " << ray.direction.z << std::endl;
 	auto v1 = (diagonal - ray.origin) / ray.direction;
 	auto v2 = (-diagonal - ray.origin) / ray.direction;
 	if (v1.x > v2.x) std::swap(v1.x, v2.x);
@@ -106,13 +106,11 @@ Primitive::intersect_ignore_transformation_box_small(const glm::vec3 &diagonal, 
 	auto t1 = std::max(v1.x, std::max(v1.y, v1.z));
 	auto t2 = std::min(v2.x, std::min(v2.y, v2.z));
 	float t;
-	if(debug)
-	std::cout << t1 << " " << t2 << std::endl;
+	//if(debug)
+	//std::cout << t1 << " " << t2 << std::endl;
 
-	if (t1 > t2 + EPS7) {
-		if(debug) std::cout << std::fixed << std::setprecision(10) << t1 << " > " << t2 << std::endl;
+	if (t1 > t2)
 		return std::nullopt;
-	}
 	if (!min_geq_zero(t1, t2, t))
 		return std::nullopt;
 	return {IntersectionSmall{t, (t1 < 0.f)}};

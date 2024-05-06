@@ -57,8 +57,15 @@ diffuse_raytrace(const Scene &scene, Random &rnd,
 	if (w_normal_dot < 0.f)
 		return primitive->emission;
 	auto p = scene.distribution.pdf(point + EPS5 * normal, normal, w);
+	//if (std::isnan(p)) {
+	//	throw std::logic_error("fail1!");
+	//}
+	//if (std::isnan(w_normal_dot)) {
+	//	throw std::logic_error("fail2!");
+	//}
 	Ray wRay = {w, point + w * EPS5};
-	return primitive->emission + 1.f / (PI * p) * w_normal_dot * raytrace(scene, rnd, wRay, depth + 1, start) * primitive->color;
+	float f = (p < EPS9) ? INF : 1.f / (PI * p);
+	return primitive->emission + f * w_normal_dot * raytrace(scene, rnd, wRay, depth + 1, start) * primitive->color;
 }
 
 Color
