@@ -38,16 +38,8 @@ AABB build_aabb(const Primitive* primitive) {
 			aabb_ignore_transformation.extend(primitive->primitive_specific[0]);
 			break;
 		case (PrimitiveType::TRIANGLE): {
-			auto aabb_min = glm::vec3(INF, INF, INF);
-			for (int axis = 0; axis < (int) Axis::AXIS_COUNT; axis++)
-				for (auto v: primitive->primitive_specific)
-					aabb_min[axis] = std::min(aabb_min[axis], v[axis]);
-			aabb_ignore_transformation.extend(aabb_min);
-			auto aabb_max = glm::vec3(-INF, -INF, -INF);
-			for (int axis = 0; axis < (int) Axis::AXIS_COUNT; axis++)
-				for (auto v: primitive->primitive_specific)
-					aabb_max[axis] = std::max(aabb_max[axis], v[axis]);
-			aabb_ignore_transformation.extend(aabb_max);
+			for (const auto &v: primitive->primitive_specific)
+				aabb_ignore_transformation.extend(v);
 			break;
 		}
 		default:

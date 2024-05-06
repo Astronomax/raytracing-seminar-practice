@@ -149,16 +149,16 @@ Primitive::intersect_ignore_transformation_box(const Ray &ray, bool debug) const
 std::optional<Intersection>
 Primitive::intersect_ignore_transformation_triangle(const Ray &ray) const
 {
-	const auto &a = primitive_specific[0];
-	const auto &b = primitive_specific[1] - a;
-	const auto &c = primitive_specific[2] - a;
+	const auto &a = primitive_specific[2];
+	const auto &b = primitive_specific[0] - a;
+	const auto &c = primitive_specific[1] - a;
 	const auto normal = glm::cross(b, c);
 	Primitive plane;
 	plane.type = PrimitiveType::PLANE;
 	plane.primitive_specific[0] = normal;
 	auto intersection = plane.intersect_ignore_transformation_plane(
 		{ray.direction, ray.origin - a});
-	intersection->point = walk_along(ray, intersection->distance);
+	//intersection->point = walk_along(ray, intersection->distance);
 	if (!intersection.has_value())
 		return std::nullopt;
 	auto p = intersection->point;

@@ -197,7 +197,10 @@ parse_input(std::ifstream &s)
 	auto planes_end = std::partition(primitives.begin(), primitives.end(),
 		       [](const Primitive &primitive)
 	{ return primitive.type == PrimitiveType::PLANE; });
-	scene.primitives = std::vector<Primitive>(planes_end, primitives.end());
+	auto prim_end = std::partition(planes_end, primitives.end(),
+					 [](const Primitive &primitive)
+					 { return true; /*return primitive.type != PrimitiveType::TRIANGLE || glm::length(primitive.emission) < EPS5;*/ });
+	scene.primitives = std::vector<Primitive>(planes_end, prim_end);
 	scene.planes = std::vector<Primitive>(primitives.begin(), planes_end);
 	scene.camera.tan_fov_y = scene.camera.tan_fov_x * (float)scene.camera.height / (float)scene.camera.width;
 	return scene;
