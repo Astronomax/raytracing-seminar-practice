@@ -7,8 +7,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <iostream>
-#include <iomanip>
 
 inline Ray
 to_local(const Ray &ray, const Primitive &primitive)
@@ -27,16 +25,12 @@ get_square_equation_roots(float a, float b, float c, float &t1, float &t2)
 		return false;
 	t1 = (-b - sqrtf(d)) / (2.f * a);
 	t2 = (-b + sqrtf(d)) / (2.f * a);
-	//assert(!std::isnan(t1));
-	//assert(!std::isnan(t2));
 	return true;
 }
 
 inline bool
 min_geq_zero(float t1, float t2, float &t)
 {
-	//assert(!std::isnan(t1));
-	//assert(!std::isnan(t2));
 	t = (t1 >= 0.f) ? t1 : t2;
 	return t >= 0.f;
 }
@@ -83,21 +77,18 @@ Primitive::intersect_ignore_transformation_plane(const Ray &ray) const
 	intersection.distance = t;
 	intersection.point = walk_along(ray, t);
 	intersection.normal = glm::normalize(normal);
-	intersection.inside = false;
-	intersection.obstacle = this;
-	if (glm::dot(intersection.normal, ray.direction) > 0.f)
+	intersection.inside = true;
+	if (glm::dot(ray.direction, normal) > 0.f) {
 		intersection.normal *= -1.f;
+		intersection.inside = false;
+	}
+	intersection.obstacle = this;
 	return intersection;
 }
 
 std::optional<IntersectionSmall>
 Primitive::intersect_ignore_transformation_box_small(const glm::vec3 &diagonal, const Ray &ray, bool debug)
 {
-	//auto &diagonal = primitive_specific[0];
-	//if(debug) std::cout << "1: " << (diagonal).x << " " << (diagonal).y << " " << (diagonal).z << std::endl;
-	//if(debug) std::cout << "1: " << (ray.origin).x << " " << (ray.origin).y << " " << (ray.origin).z << std::endl;
-	//if(debug) std::cout << "1: " << (diagonal - ray.origin).x << " " << (diagonal - ray.origin).y << " " << (diagonal - ray.origin).z << std::endl;
-	//if(debug) std::cout << "2: " <<  ray.direction.x << " " << ray.direction.y << " " << ray.direction.z << std::endl;
 	auto v1 = (diagonal - ray.origin) / ray.direction;
 	auto v2 = (-diagonal - ray.origin) / ray.direction;
 	if (v1.x > v2.x) std::swap(v1.x, v2.x);
@@ -106,9 +97,6 @@ Primitive::intersect_ignore_transformation_box_small(const glm::vec3 &diagonal, 
 	auto t1 = std::max(v1.x, std::max(v1.y, v1.z));
 	auto t2 = std::min(v2.x, std::min(v2.y, v2.z));
 	float t;
-	//if(debug)
-	//std::cout << t1 << " " << t2 << std::endl;
-
 	if (t1 > t2)
 		return std::nullopt;
 	if (!min_geq_zero(t1, t2, t))
@@ -152,11 +140,10 @@ Primitive::intersect_ignore_transformation_triangle(const Ray &ray) const
 	const auto &c = primitive_specific[1] - a;
 	const auto normal = glm::cross(b, c);
 	Primitive plane;
-	plane.type = PrimitiveType::PLANE;
+	plane.type = FigureType::PLANE;
 	plane.primitive_specific[0] = normal;
 	auto intersection = plane.intersect_ignore_transformation_plane(
 		{ray.direction, ray.origin - a});
-	//intersection->point = walk_along(ray, intersection->distance);
 	if (!intersection.has_value())
 		return std::nullopt;
 	auto p = intersection->point;
@@ -178,16 +165,16 @@ Primitive::intersect(const Ray &ray, bool debug) const
 
 	std::optional<Intersection> intersection;
 	switch (type) {
-		case (PrimitiveType::ELLIPSOID):
+		case (FigureType::ELLIPSOID):
 			intersection = intersect_ignore_transformation_ellipsoid(in_local);
 			break;
-		case (PrimitiveType::PLANE):
+		case (FigureType::PLANE):
 			intersection = intersect_ignore_transformation_plane(in_local);
 			break;
-		case (PrimitiveType::BOX):
+		case (FigureType::BOX):
 			intersection = intersect_ignore_transformation_box(in_local, debug);
 			break;
-		case (PrimitiveType::TRIANGLE):
+		case (FigureType::TRIANGLE):
 			intersection = intersect_ignore_transformation_triangle(in_local);
 			break;
 		default:

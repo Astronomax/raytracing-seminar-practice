@@ -15,14 +15,13 @@ add_executable(${TARGET_NAME}
         src/BVH.cpp
         src/Camera.cpp
         src/Color.cpp
-        src/geometry_utils.cpp
         src/Image.cpp
-        src/parse_input.cpp
         src/Primitive.cpp
         src/Random.cpp
-        src/Ray.cpp
         src/render.cpp
         src/Scene.cpp
+        src/Transform.cpp
+        include/Gltf.hpp
         include/utils.hpp
 )
 #target_compile_options(${TARGET_NAME} PUBLIC -O3)

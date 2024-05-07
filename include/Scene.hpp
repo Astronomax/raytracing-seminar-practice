@@ -5,6 +5,7 @@
 #include "Camera.hpp"
 #include "Color.hpp"
 #include "Primitive.hpp"
+#include "Gltf.hpp"
 #include "Random.hpp"
 
 #include <memory>
@@ -12,6 +13,13 @@
 
 struct Scene {
 	void init();
+
+	std::vector<GltfBuffer> buffers;
+	std::vector<GltfBufferView> bufferViews;
+	std::vector<GltfNode> nodes;
+	std::vector<GltfMesh> meshes;
+	std::vector<GltfAccessor> accessors;
+	std::vector<GltfMaterial> materials;
 
 	Camera camera;
 	Color bg_color = black;
@@ -24,5 +32,6 @@ struct Scene {
 	Distribution distribution;
 };
 
+Scene load_scene(std::string_view gltfFilename);
 
 #endif //RAYTRACING_SEMINAR_PRACTICE_SCENE_HPP

@@ -9,8 +9,6 @@ struct Ray {
 	glm::vec3 origin;
 };
 
-//glm::vec3 walk_along(Ray ray, float distance);
-
 inline glm::vec3
 walk_along(Ray ray, float distance)
 {

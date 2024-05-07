@@ -13,6 +13,7 @@ struct Camera {
 	glm::vec3 right;
 	glm::vec3 up;
 	glm::vec3 forward;
+	float fov_y;
 	float tan_fov_x;
 	float tan_fov_y;
 };

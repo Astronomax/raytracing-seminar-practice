@@ -2,14 +2,16 @@
 #define RAYTRACING_SEMINAR_PRACTICE_PRIMITIVE_HPP
 
 #include "Color.hpp"
+#include "Material.hpp"
 #include "Ray.hpp"
+#include "Gltf.hpp"
 
 #include <glm/gtc/quaternion.hpp>
 
 #include <optional>
 #include <memory>
 
-enum class PrimitiveType {
+enum class FigureType {
     ELLIPSOID,
     PLANE,
     BOX,
@@ -17,15 +19,7 @@ enum class PrimitiveType {
     PRIMITIVES_NUMBER
 };
 
-enum class Material {
-	METALLIC,
-	DIELECTRIC,
-	DIFFUSE,
-	MATERIALS_NUMBER
-};
-
 struct Primitive;
-//typedef std::shared_ptr<const Primitive> PrimitivePtr;
 
 struct IntersectionSmall {
     float distance;
@@ -50,11 +44,9 @@ private:
 	std::optional<Intersection> intersect_ignore_transformation_box(const Ray &ray, bool debug=false) const;
 	std::optional<Intersection> intersect_ignore_transformation_triangle(const Ray &ray) const;
 public:
-	Color color = black;
-	Material material = Material::DIFFUSE;
-	float ior;
-	Color emission;
-    	PrimitiveType type;
+    
+    	GltfMaterial material;
+    	FigureType type;
 	glm::vec3 primitive_specific[3];
 	glm::vec3 position = {0, 0, 0};
 	glm::quat rotation = {1, 0, 0, 0};
